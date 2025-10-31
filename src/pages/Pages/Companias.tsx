@@ -7,62 +7,58 @@ import IconUserPlus from "../../components/Icon/IconUserPlus";
 import IconListCheck from "../../components/Icon/IconListCheck";
 import IconLayoutGrid from "../../components/Icon/IconLayoutGrid";
 import IconSearch from "../../components/Icon/IconSearch";
-import IconUser from "../../components/Icon/IconUser";
 import IconX from "../../components/Icon/IconX";
-
-import { useClientes } from "../../hooks/useClientes";
-import { Cliente } from "../../types/Cliente";
+import { useCompanies } from "../../hooks/useCompanies";
+import { Company } from "../../types/Company";
 
 // ----------------------------------------------------------------------
 
-const Clientes = () => {
+const Companies = () => {
     const dispatch = useDispatch();
-    const token = localStorage.getItem("token") || ""; // 🔐 Token del usuario logueado
+    const token = localStorage.getItem("token") || "";
 
-    // Hook de clientes (CRUD)
+    // Hook de compañías
     const {
-        clientes,
-        loading,
-        error,
-        fetchClientes,
-        addCliente,
-        editCliente,
-        removeCliente,
-    } = useClientes();
+        companies,
+        loadingInicial,
+        loadingAccion,
+        fetchCompanies,
+        addCompany,
+        editCompany,
+        removeCompany,
+    } = useCompanies();
 
     // -------------------------------
     // Estados locales de UI
-    const [addContactModal, setAddContactModal] = useState(false);
+    const [addModal, setAddModal] = useState(false);
     const [view, setView] = useState<"list" | "grid">("list");
     const [search, setSearch] = useState("");
-    const [filtered, setFiltered] = useState<Cliente[]>([]);
-
-    const [params, setParams] = useState<Cliente>({
+    const [filtered, setFiltered] = useState<Company[]>([]);
+    const [params, setParams] = useState<Company>({
         id: 0,
         name: "",
-        email: "",
-        dni: "",
-        phone: "",
         address: "",
+        email: "",
+        phone: "",
     });
 
     // -------------------------------
-    // Cargar clientes al montar
+    // Cargar compañías al montar
     useEffect(() => {
-        dispatch(setPageTitle("Clientes"));
-        fetchClientes(token);
-    }, [dispatch, fetchClientes, token]);
+        dispatch(setPageTitle("Compañías"));
+        fetchCompanies(token);
+    }, [dispatch, fetchCompanies, token]);
 
     // -------------------------------
     // Filtro de búsqueda
     useEffect(() => {
-        if (clientes) {
-            const filteredList = clientes.filter((item) =>
+        if (companies) {
+            const filteredList = companies.filter((item) =>
                 item.name.toLowerCase().includes(search.toLowerCase())
             );
             setFiltered(filteredList);
         }
-    }, [search, clientes]);
+    }, [search, companies]);
 
     // -------------------------------
     // Funciones de UI
@@ -71,25 +67,24 @@ const Clientes = () => {
         setParams({ ...params, [id]: value });
     };
 
-    const openModal = (cliente?: Cliente) => {
-        if (cliente) setParams(cliente);
+    const openModal = (company?: Company) => {
+        if (company) setParams(company);
         else
             setParams({
                 id: 0,
                 name: "",
-                dni: "",
+                address: "",
                 email: "",
                 phone: "",
-                address: "",
             });
-        setAddContactModal(true);
+        setAddModal(true);
     };
 
-    const closeModal = () => setAddContactModal(false);
+    const closeModal = () => setAddModal(false);
 
     // -------------------------------
-    // Guardar o actualizar cliente
-    const saveCliente = async () => {
+    // Guardar o actualizar compañía
+    const saveCompany = async () => {
         if (!params.name || !params.email || !params.phone) {
             showMessage("Por favor, complete todos los campos obligatorios.", "error");
             return;
@@ -97,21 +92,21 @@ const Clientes = () => {
 
         try {
             if (params.id) {
-                await editCliente(params.id, params, token);
-                showMessage("Cliente actualizado correctamente.");
+                await editCompany(params.id, params, token);
+                showMessage("Compañía actualizada correctamente.");
             } else {
-                await addCliente(params, token);
-                showMessage("Cliente agregado correctamente.");
+                await addCompany(params, token);
+                showMessage("Compañía agregada correctamente.");
             }
             closeModal();
         } catch {
-            showMessage("Error al guardar el cliente.", "error");
+            showMessage("Error al guardar la compañía.", "error");
         }
     };
 
-    const deleteCliente = async (id: number) => {
+    const deleteCompany = async (id: number) => {
         const confirm = await Swal.fire({
-            title: "¿Eliminar cliente?",
+            title: "¿Eliminar compañía?",
             text: "Esta acción no se puede deshacer",
             icon: "warning",
             showCancelButton: true,
@@ -121,10 +116,10 @@ const Clientes = () => {
 
         if (confirm.isConfirmed) {
             try {
-                await removeCliente(id, token);
-                showMessage("Cliente eliminado correctamente.");
+                await removeCompany(id, token);
+                showMessage("Compañía eliminada correctamente.");
             } catch {
-                showMessage("Error al eliminar cliente.", "error");
+                showMessage("Error al eliminar compañía.", "error");
             }
         }
     };
@@ -144,17 +139,14 @@ const Clientes = () => {
     // -------------------------------
     return (
         <div>
+            {/* ------------------- Header ------------------- */}
             <div className="flex items-center justify-between flex-wrap gap-4">
-                <h2 className="text-xl">Clientes</h2>
+                <h2 className="text-xl font-semibold">Compañías</h2>
                 <div className="flex sm:flex-row flex-col sm:items-center sm:gap-3 gap-4 w-full sm:w-auto">
                     <div className="flex gap-3">
-                        <button
-                            type="button"
-                            className="btn btn-primary"
-                            onClick={() => openModal()}
-                        >
+                        <button type="button" className="btn btn-primary" onClick={() => openModal()}>
                             <IconUserPlus className="ltr:mr-2 rtl:ml-2" />
-                            Agregar Cliente
+                            Agregar Compañía
                         </button>
 
                         <button
@@ -176,7 +168,7 @@ const Clientes = () => {
                     <div className="relative">
                         <input
                             type="text"
-                            placeholder="Buscar cliente"
+                            placeholder="Buscar compañía"
                             className="form-input py-2 ltr:pr-11 rtl:pl-11 peer"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
@@ -193,18 +185,25 @@ const Clientes = () => {
 
             {/* ------------------- Tabla ------------------- */}
             {view === "list" && (
-                <div className="mt-5 panel p-0 border-0 overflow-hidden">
-                    {loading ? (
-                        <div className="p-6 text-center text-gray-500">Cargando clientes...</div>
+                <div className="mt-5 panel p-0 border-0 overflow-hidden relative">
+                    {loadingInicial ? (
+                        <div className="p-6 text-center text-gray-500">Cargando compañías...</div>
                     ) : filtered.length === 0 ? (
-                        <div className="p-6 text-center text-gray-400">No hay clientes registrados.</div>
+                        <div className="p-6 text-center text-gray-400">No hay compañías registradas.</div>
                     ) : (
-                        <div className="table-responsive">
+                        <div className="table-responsive relative">
+                            {loadingAccion && (
+                                <div className="absolute inset-0 bg-white/70 dark:bg-gray-900/70 flex items-center justify-center z-10">
+                                    <div className="flex flex-col items-center text-gray-600 dark:text-gray-300">
+                                        <div className="w-6 h-6 border-2 border-gray-400 border-t-primary rounded-full animate-spin mb-2"></div>
+                                        <span>Procesando...</span>
+                                    </div>
+                                </div>
+                            )}
                             <table className="table-striped table-hover">
                                 <thead>
                                     <tr>
                                         <th>Nombre</th>
-                                        <th>DNI</th>
                                         <th>Email</th>
                                         <th>Teléfono</th>
                                         <th>Dirección</th>
@@ -215,7 +214,6 @@ const Clientes = () => {
                                     {filtered.map((c) => (
                                         <tr key={c.id}>
                                             <td>{c.name}</td>
-                                            <td>{c.dni}</td>
                                             <td>{c.email}</td>
                                             <td>{c.phone}</td>
                                             <td>{c.address}</td>
@@ -231,7 +229,7 @@ const Clientes = () => {
                                                     <button
                                                         type="button"
                                                         className="btn btn-sm btn-outline-danger"
-                                                        onClick={() => deleteCliente(c.id)}
+                                                        onClick={() => deleteCompany(c.id)}
                                                     >
                                                         Eliminar
                                                     </button>
@@ -247,9 +245,17 @@ const Clientes = () => {
             )}
 
             {/* ------------------- Modal ------------------- */}
-            <Transition appear show={addContactModal} as={Fragment}>
-                <Dialog as="div" open={addContactModal} onClose={closeModal} className="relative z-[51]">
-                    <TransitionChild as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0">
+            <Transition appear show={addModal} as={Fragment}>
+                <Dialog as="div" open={addModal} onClose={closeModal} className="relative z-[51]">
+                    <TransitionChild
+                        as={Fragment}
+                        enter="ease-out duration-300"
+                        enterFrom="opacity-0"
+                        enterTo="opacity-100"
+                        leave="ease-in duration-200"
+                        leaveFrom="opacity-100"
+                        leaveTo="opacity-0"
+                    >
                         <div className="fixed inset-0 bg-[black]/60" />
                     </TransitionChild>
                     <div className="fixed inset-0 overflow-y-auto">
@@ -272,17 +278,13 @@ const Clientes = () => {
                                         <IconX />
                                     </button>
                                     <div className="text-lg font-medium bg-[#fbfbfb] dark:bg-[#121c2c] ltr:pl-5 rtl:pr-5 py-3 ltr:pr-[50px] rtl:pl-[50px]">
-                                        {params.id ? "Editar Cliente" : "Agregar Cliente"}
+                                        {params.id ? "Editar Compañía" : "Agregar Compañía"}
                                     </div>
                                     <div className="p-5">
                                         <form>
                                             <div className="mb-4">
                                                 <label htmlFor="name">Nombre</label>
                                                 <input id="name" type="text" className="form-input" value={params.name} onChange={changeValue} />
-                                            </div>
-                                            <div className="mb-4">
-                                                <label htmlFor="dni">DNI</label>
-                                                <input id="dni" type="text" className="form-input" value={params.dni} onChange={changeValue} />
                                             </div>
                                             <div className="mb-4">
                                                 <label htmlFor="email">Email</label>
@@ -294,14 +296,14 @@ const Clientes = () => {
                                             </div>
                                             <div className="mb-4">
                                                 <label htmlFor="address">Dirección</label>
-                                                <textarea id="address" rows={3} className="form-textarea" value={params.address} onChange={changeValue}></textarea>
+                                                <textarea id="address" rows={3} className="form-textarea resize-none" value={params.address} onChange={changeValue}></textarea>
                                             </div>
 
                                             <div className="flex justify-end items-center mt-6">
                                                 <button type="button" className="btn btn-outline-danger" onClick={closeModal}>
                                                     Cancelar
                                                 </button>
-                                                <button type="button" className="btn btn-primary ltr:ml-4 rtl:mr-4" onClick={saveCliente}>
+                                                <button type="button" className="btn btn-primary ltr:ml-4 rtl:mr-4" onClick={saveCompany}>
                                                     {params.id ? "Actualizar" : "Agregar"}
                                                 </button>
                                             </div>
@@ -317,4 +319,4 @@ const Clientes = () => {
     );
 };
 
-export default Clientes;
+export default Companies;

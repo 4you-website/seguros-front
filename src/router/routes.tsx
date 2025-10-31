@@ -95,11 +95,13 @@ import Clipboard from '../pages/Forms/Clipboard';
 import About from '../pages/About';
 import Error from '../components/Error';
 import Clientes from '../pages/Pages/Clientes';
+import Companias from '../pages/Pages/Companias';
 
 // 🧩 Tus rutas originales
 const baseRoutes = [
     // dashboard
     { path: '/', element: <Navigate to="/auth/login" replace /> },
+    { path: '/companias', element: <Companias /> },
     { path: '/clientes', element: <Clientes /> },
     { path: '/escritorio', element: <Escritorio /> },
     { path: '/analytics', element: <Analytics /> },
