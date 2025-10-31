@@ -2,16 +2,12 @@ import { Navigate } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 
 import Escritorio from '../pages/Escritorio';
-import Notificaciones from '../pages/Notificaciones';
-import Expedientes from '../pages/Expedientes';
-import Tramites from '../pages/Tramites';
 import Analytics from '../pages/Analytics';
 import Finance from '../pages/Finance';
 import Crypto from '../pages/Crypto';
 import Todolist from '../pages/Apps/Todolist';
 import Mailbox from '../pages/Apps/Mailbox';
 import Notes from '../pages/Apps/Notes';
-import Contacts from '../pages/Apps/Contacts';
 import Chat from '../pages/Apps/Chat';
 import Scrumboard from '../pages/Apps/Scrumboard';
 import Calendar from '../pages/Apps/Calendar';
@@ -98,21 +94,19 @@ import DateRangePicker from '../pages/Forms/DateRangePicker';
 import Clipboard from '../pages/Forms/Clipboard';
 import About from '../pages/About';
 import Error from '../components/Error';
+import Clientes from '../pages/Pages/Clientes';
 
 // 🧩 Tus rutas originales
 const baseRoutes = [
     // dashboard
     { path: '/', element: <Navigate to="/auth/login" replace /> },
+    { path: '/clientes', element: <Clientes /> },
     { path: '/escritorio', element: <Escritorio /> },
-    { path: '/notificaciones', element: <Notificaciones /> },
-    { path: '/expedientes', element: <Expedientes /> },
-    { path: '/expedientes/:id/tramites', element: <Tramites /> },
     { path: '/analytics', element: <Analytics /> },
     { path: '/finance', element: <Finance /> },
     { path: '/crypto', element: <Crypto /> },
     { path: '/apps/todolist', element: <Todolist /> },
     { path: '/apps/notes', element: <Notes /> },
-    { path: '/apps/contacts', element: <Contacts /> },
     { path: '/apps/mailbox', element: <Mailbox /> },
     { path: '/apps/chat', element: <Chat /> },
     { path: '/apps/scrumboard', element: <Scrumboard /> },

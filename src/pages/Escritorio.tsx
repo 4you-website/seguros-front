@@ -7,8 +7,7 @@ import { setPageTitle } from '../store/themeConfigSlice';
 import IconMenuMailbox from '../components/Icon/Menu/IconMenuMailbox';
 import IconChatNotification from '../components/Icon/IconChatNotification';
 import { NotificacionModal } from '../components/modals';
-import { useCalendarEvents, useNotifications } from "../hooks";
-import { Notification } from "../types";
+import { useCalendarEvents  } from "../hooks";
 import { IRootState } from '../store';
 import IconMessage from '../components/Icon/IconMessage';
 import IconMailDot from '../components/Icon/IconMailDot';
@@ -18,9 +17,6 @@ const Escritorio = () => {
     const dispatch = useDispatch();
     const { user, token } = useSelector((state: IRootState) => state.auth);
 
-    const { notifications, loading, error } = useNotifications(user?.id ?? null, token);
-
-    const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
     const [modalOpen, setModalOpen] = useState(false);
 
     const {
@@ -39,11 +35,8 @@ const Escritorio = () => {
         dispatch(setPageTitle('Escritorio'));
     }, [dispatch]);
 
-    if (loading) return <p>Cargando...</p>;
-    if (error) return <p className="text-red-500">{error}</p>;
 
     // Obtener las últimas 5 notificaciones (si hay)
-    const ultimasNotificaciones = notifications?.slice(-5).reverse() ?? [];
 
     return (
         <div className="panel px-0 border-white-light dark:border-[#1b2e4b]">
@@ -68,32 +61,6 @@ const Escritorio = () => {
 
                         <div className="overflow-x-auto">
                             <table className="table-auto w-full text-sm">
-                                <tbody>
-                                    {ultimasNotificaciones.length > 0 ? (
-                                        ultimasNotificaciones.map((n) => (
-                                            <tr
-                                                key={n.id}
-                                                className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
-                                                onClick={() => {
-                                                    setSelectedNotification(n);
-                                                    setModalOpen(true);
-                                                }}
-                                            >
-                                                <td className="py-2">{n.code}</td>
-                                                <td className="py-2">{n.case_file.title}</td>
-                                                <td className="py-2">
-                                                    {n.procedural_step.date}
-                                                </td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan={3} className="text-center py-3 text-gray-500">
-                                                No hay notificaciones
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
                             </table>
                         </div>
                     </div>
@@ -109,38 +76,7 @@ const Escritorio = () => {
                         <div className="overflow-x-auto">
                             <table className="table-auto w-full text-sm">
 
-                                <tbody>
-                                    {ultimasNotificaciones.length > 0 ? (
-                                        ultimasNotificaciones.map((n) => (
-                                            <tr
-                                                key={n.id}
-                                                className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
-                                                onClick={() => {
-                                                    setSelectedNotification(n);
-                                                    setModalOpen(true);
-                                                }}
-                                            >
-                                                <td className="py-2">
-                                                    <div className="flex flex-col">
-                                                        <span className="font-medium">{n.case_file.title}</span>
-                                                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                            {n.case_file.organism}
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                                <td className="py-2">
-                                                    {n.procedural_step.date}
-                                                </td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan={3} className="text-center py-3 text-gray-500">
-                                                No hay registros
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
+                            
                             </table>
                         </div>
                     </div>
@@ -190,12 +126,6 @@ const Escritorio = () => {
                     </div>
                 </div>
 
-                {/* Modal de detalle de notificación */}
-                <NotificacionModal
-                    isOpen={modalOpen}
-                    onClose={() => setModalOpen(false)}
-                    notification={selectedNotification}
-                />
             </div>
         </div>
     );

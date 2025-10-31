@@ -35,7 +35,7 @@ const LoginBoxed = () => {
         try {
             const data = await loginService(email, password);
             dispatch(loginSuccess({ user: data.user, token: data.token }));
-            navigate('/notificaciones');
+            navigate('/escritorio');
         } catch (err) {
             console.error(err);
             setError('Usuario o contraseña incorrectos');
@@ -116,7 +116,7 @@ const LoginBoxed = () => {
                                     Iniciar Sesión
                                 </h1>
                                 <p className="text-base font-bold leading-normal text-white-dark">
-                                    Ingresá con usuario y contraseña de Procurando
+                                    Ingresá con usuario y contraseña de Seguros
                                 </p>
                             </div>
 

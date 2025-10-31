@@ -7,7 +7,7 @@ export default defineConfig({
     server: {
         proxy: {
             "/api": {
-                target: "https://app.procurando.com.ar",
+                target: "https://seguros.4you.website",
                 changeOrigin: true,
                 secure: false,
             },

@@ -2,11 +2,13 @@ import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import themeConfigSlice from "./themeConfigSlice";
 import authSlice from "./authSlice";
 import googleAuth from "./googleAuthSlice";
+import clientesSlice from "./clientesSlice"; 
 
 const rootReducer = combineReducers({
     themeConfig: themeConfigSlice,
     auth: authSlice,
-    authGoogle: googleAuth
+    authGoogle: googleAuth,    
+    clientes: clientesSlice,
 });
 
 export const store = configureStore({
