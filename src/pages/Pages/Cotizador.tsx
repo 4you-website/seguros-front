@@ -4,10 +4,14 @@ import { setPageTitle } from "../../store/themeConfigSlice";
 import Swal from "sweetalert2";
 import IconSend from "../../components/Icon/IconSend";
 import Select from "react-select";
+import html2canvas from "html2canvas";
+
 
 import { useGetBrandsQuery } from "../../store/api/brandsApi";
 import { useGetModelsQuery } from "../../store/api/modelsApi";
 import { useGetStatesQuery } from "../../store/api/statesApi";
+
+import { compartirPorWhatsApp } from "../../utils/whatsappUtils";
 
 
 // 🔹 Importamos el JSON local
@@ -90,31 +94,7 @@ const Cotizador = () => {
         });
     };
 
-    // Función para enviar todas las cotizaciones seleccionadas
-    const enviarTodasPorWhatsApp = () => {
-        if (planesSeleccionados.length === 0) return;
 
-        const numeroCliente = prompt("📱 Ingrese el número de WhatsApp (solo números, con código de país):", "54911xxxxxxxx");
-        if (!numeroCliente) return;
-
-        // Armamos un mensaje general
-        let mensaje = "🚗 *Cotización Provincia Seguros*\n------------------------------------\n";
-
-        planesSeleccionados.forEach((plan) => {
-            const promo = plan.promocionesPorPlan?.[0];
-            mensaje += `💡 *Plan:* ${plan.descripcion.trim()}\n`;
-            mensaje += `💰 *Premio:* $${formatNumber(promo?.premio)}\n`;
-            mensaje += `🪙 *Comisión:* $${formatNumber(promo?.comision)}\n`;
-            mensaje += `📅 *Vigencia:* ${promo?.vigencia}\n`;
-            mensaje += `📄 *Prima comisionable:* $${formatNumber(promo?.primaComisionable)}\n`;
-            mensaje += "------------------------------------\n";
-        });
-
-        mensaje += `📅 *Fecha de cotización:* ${cotizacion?.fechaCotizacion}\n🔢 *Número:* ${cotizacion?.numeroCotizacion}`;
-
-        const url = `https://wa.me/${numeroCliente}?text=${encodeURIComponent(mensaje)}`;
-        window.open(url, "_blank");
-    };
 
     // Placeholder para guardar las cotizaciones
     const guardarEnCliente = () => {
@@ -126,27 +106,6 @@ const Cotizador = () => {
         });
     };
 
-
-    const enviarPorWhatsApp = (plan: any, promo: any) => {
-        const numeroCliente = prompt("📱 Ingrese el número de WhatsApp (solo números, con código de país):", "54911xxxxxxxx");
-        if (!numeroCliente) return;
-        const mensaje = `
-*Cotización Provincia Seguros*
-------------------------------------
-*Plan:* ${plan.descripcion.trim()}
-*Premio:* $${formatNumber(promo?.premio)}
-*Comisión:* $${formatNumber(promo?.comision)}
-*Vigencia:* ${promo?.vigencia}
-*Prima comisionable:* $${formatNumber(promo?.primaComisionable)}
-------------------------------------
-*Fecha de cotización:* ${cotizacion?.fechaCotizacion}
-*Número:* ${cotizacion?.numeroCotizacion}
-`;
-
-        // Encodeamos correctamente TODO el texto (incluyendo emojis)
-        const url = `https://wa.me/${numeroCliente}?text=${encodeURIComponent(mensaje)}`;
-        window.open(url, "_blank");
-    };
 
 
 
@@ -322,6 +281,7 @@ const Cotizador = () => {
 
                                 return (
                                     <div
+                                        id={`card-${plan.plan}`}
                                         key={index}
                                         className="flex flex-col justify-between relative bg-white dark:bg-[#0d1727] rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700 transition hover:shadow-2xl hover:-translate-y-1 duration-300"
                                     >
@@ -381,15 +341,19 @@ const Cotizador = () => {
                                                     ? "Seleccionado"
                                                     : "Seleccionar Plan"}
                                             </button>
-
-
                                             <button
                                                 type="button"
-                                                onClick={() => enviarPorWhatsApp(plan, promo)}
+                                                onClick={() => compartirPorWhatsApp(`card-${plan.plan}`, plan, promo, cotizacion)}
                                                 className="w-full py-2 rounded-lg bg-green-500 text-white font-semibold hover:bg-green-600 transition flex items-center justify-center gap-2"
                                             >
-                                                <i className="fab fa-whatsapp text-lg"></i> Compartir por WhatsApp
+                                                <img
+                                        src="/assets/images/whatsapp.png"
+                                        alt="WhatsApp"
+                                        className="w-5 h-5"
+                                    /> 
+                                                Enviar por WhatsApp
                                             </button>
+
                                         </div>
 
                                     </div>
@@ -402,11 +366,15 @@ const Cotizador = () => {
                                 {/* WhatsApp */}
                                 <button
                                     type="button"
-                                    onClick={() => enviarTodasPorWhatsApp()}
+
                                     className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold px-6 py-3 rounded-lg transition w-full sm:w-auto"
                                 >
                                     <i className="fab fa-whatsapp text-xl"></i>
-                                    Enviar {planesSeleccionados.length > 1 ? "planes" : "plan"} por WhatsApp
+                                    <img
+                                        src="/assets/images/whatsapp.png"
+                                        alt="WhatsApp"
+                                        className="w-5 h-5"
+                                    /> Enviar {planesSeleccionados.length > 1 ? "planes" : "plan"} por WhatsApp
                                 </button>
 
                                 {/* Guardar en cliente */}

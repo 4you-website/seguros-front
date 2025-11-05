@@ -20,7 +20,7 @@ const Sidebar = () => {
                     {/* Header */}
                     <div className="flex justify-between items-center px-4 py-3">
                         <NavLink to="/" className="main-logo flex items-center shrink-0">
-                            <img className="w-8 ml-1" src="/assets/images/logo.svg" alt="logo" />
+                            <img className="w-8 ml-1" src="/favicon.png" alt="logo" />
                             <span className="text-2xl ml-2 font-semibold dark:text-white">Seguros</span>
                         </NavLink>
 

@@ -136,7 +136,7 @@ const Faq = () => {
                             ${active1 === 1 ? 'bg-primary-light dark:bg-[#1B2E4B] !text-primary' : ''}`}
                                 onClick={() => setActive1(active1 === 1 ? null : 1)}
                             >
-                                <span>How to install VRISTO Admin</span>
+                                <span>How to install Seguros Admin</span>
                                 {active1 !== 1 ? (
                                     <span className="shrink-0">
                                         <IconPlusCircle duotone={false} />
@@ -192,7 +192,7 @@ const Faq = () => {
                             ${active1 === 3 ? 'bg-primary-light dark:bg-[#1B2E4B] !text-primary' : ''}`}
                                 onClick={() => setActive1(active1 === 3 ? null : 3)}
                             >
-                                <span>How to install VRISTO Admin</span>
+                                <span>How to install Seguros Admin</span>
                                 {active1 !== 3 ? (
                                     <span className="shrink-0">
                                         <IconPlusCircle duotone={false} />
@@ -220,7 +220,7 @@ const Faq = () => {
                             ${active1 === 5 ? 'bg-primary-light dark:bg-[#1B2E4B] !text-primary' : ''}`}
                                 onClick={() => setActive1(active1 === 5 ? null : 5)}
                             >
-                                <span>How to install VRISTO Admin</span>
+                                <span>How to install Seguros Admin</span>
                                 {active1 !== 5 ? (
                                     <span className="shrink-0">
                                         <IconPlusCircle duotone={false} />

@@ -548,7 +548,7 @@ const Analytics = () => {
                                         <h5 className="font-semibold dark:text-white-light">
                                             New project created :{' '}
                                             <button type="button" className="text-success">
-                                                [VRISTO Admin Template]
+                                                [Seguros Admin Template]
                                             </button>
                                         </h5>
                                         <p className="text-white-dark text-xs">27 Feb, 2020</p>
