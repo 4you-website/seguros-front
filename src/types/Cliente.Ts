@@ -1,10 +1,11 @@
-// src/types/Cliente.ts
 export interface Cliente {
-    id: number;
-    name: string;        // nombre (solo el nombre)
-    lastname: string;    // apellido
+    id?: number;           
+    name: string;
+    lastname: string;
     email: string;
     phone: string;
-    zipcode: string;     // código postal
-   company_id: number;  // relación con la empresa
+    zipcode: string;
+    vat: string;           
+    is_company: boolean;   
+    state_id: number;      
 }

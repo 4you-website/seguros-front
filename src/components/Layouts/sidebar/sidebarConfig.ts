@@ -21,6 +21,10 @@ import IconMenuPages from '../../Icon/Menu/IconMenuPages';
 import IconMenuAuthentication from '../../Icon/Menu/IconMenuAuthentication';
 import IconMenuDocumentation from '../../Icon/Menu/IconMenuDocumentation';
 import IconMessage from '../../Icon/IconMailDot';
+import IconSettings from '../../Icon/IconSettings';
+import IconCashBanknotes from '../../Icon/IconCashBanknotes';
+import IconDollarSign from '../../Icon/IconDollarSign';
+import IconDollarSignCircle from '../../Icon/IconDollarSignCircle';
 
 
 export interface SidebarItem {
@@ -39,18 +43,22 @@ export interface SidebarSection {
 export const sidebarConfig: SidebarSection[] = [
     {
         items: [
-            { label: 'Expedientes', icon: IconMenuNotes, path: '/expedientes' },
-            { label: 'Notificaciones', icon: IconMessage, path: '/notificaciones' },
             {
-                label: 'Dashboard',
+                label: 'Escritorio',
                 icon: IconMenuDashboard,
                 children: [
+                    { label: 'Clientes', path: '/clientes' },
+                    { label: 'Compañias', path: '/companias' },
+                    { label: 'Marcas', path: '/marcas' },
+                    { label: 'Modelos', path: '/modelos' },
                     { label: 'Ventas', path: '/' },
                     { label: 'Analítica', path: '/analytics' },
                     { label: 'Finanzas', path: '/finance' },
                     { label: 'Cripto', path: '/crypto' },
                 ],
             },
+            { label: 'Configuración', icon: IconSettings, path: '/configuracion' },
+            { label: 'Cotizador', icon: IconDollarSignCircle, path: '/cotizador' },
         ],
     },
     {

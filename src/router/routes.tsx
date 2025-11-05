@@ -64,16 +64,10 @@ import Export from '../pages/DataTables/Export';
 import ColumnChooser from '../pages/DataTables/ColumnChooser';
 import Profile from '../pages/Users/Profile';
 import AccountSetting from '../pages/Users/AccountSetting';
-import KnowledgeBase from '../pages/Pages/KnowledgeBase';
-import ContactUsBoxed from '../pages/Pages/ContactUsBoxed';
-import ContactUsCover from '../pages/Pages/ContactUsCover';
 import Faq from '../pages/Pages/Faq';
-import ComingSoonBoxed from '../pages/Pages/ComingSoonBoxed';
-import ComingSoonCover from '../pages/Pages/ComingSoonCover';
 import ERROR404 from '../pages/Pages/Error404';
 import ERROR500 from '../pages/Pages/Error500';
 import ERROR503 from '../pages/Pages/Error503';
-import Maintenence from '../pages/Pages/Maintenence';
 import LoginBoxed from '../pages/Authentication/LoginBoxed';
 import RegisterBoxed from '../pages/Authentication/RegisterBoxed';
 import RecoverIdBoxed from '../pages/Authentication/RecoverIdBox';
@@ -95,14 +89,16 @@ import Clipboard from '../pages/Forms/Clipboard';
 import About from '../pages/About';
 import Error from '../components/Error';
 import Clientes from '../pages/Pages/Clientes';
-import Companias from '../pages/Pages/Companias';
+import UserConfig from '../pages/Pages/UserConfig';
+import Cotizador from '../pages/Pages/Cotizador';
 
 // 🧩 Tus rutas originales
 const baseRoutes = [
     // dashboard
     { path: '/', element: <Navigate to="/auth/login" replace /> },
-    { path: '/companias', element: <Companias /> },
     { path: '/clientes', element: <Clientes /> },
+    { path: '/cotizador', element: <Cotizador /> },
+    { path: '/configuracion', element: <UserConfig /> },
     { path: '/escritorio', element: <Escritorio /> },
     { path: '/analytics', element: <Analytics /> },
     { path: '/finance', element: <Finance /> },
@@ -166,16 +162,10 @@ const baseRoutes = [
     { path: '/datatables/column-chooser', element: <ColumnChooser /> },
     { path: '/users/profile', element: <Profile /> },
     { path: '/users/user-account-settings', element: <AccountSetting /> },
-    { path: '/pages/knowledge-base', element: <KnowledgeBase /> },
-    { path: '/pages/contact-us-boxed', element: <ContactUsBoxed />, layout: 'blank' },
-    { path: '/pages/contact-us-cover', element: <ContactUsCover />, layout: 'blank' },
     { path: '/pages/faq', element: <Faq /> },
-    { path: '/pages/coming-soon-boxed', element: <ComingSoonBoxed />, layout: 'blank' },
-    { path: '/pages/coming-soon-cover', element: <ComingSoonCover />, layout: 'blank' },
     { path: '/pages/error404', element: <ERROR404 />, layout: 'blank' },
     { path: '/pages/error500', element: <ERROR500 />, layout: 'blank' },
     { path: '/pages/error503', element: <ERROR503 />, layout: 'blank' },
-    { path: '/pages/maintenence', element: <Maintenence />, layout: 'blank' },
     { path: '/auth/login', element: <LoginBoxed />, layout: 'blank' },
     { path: '/auth/boxed-signup', element: <RegisterBoxed />, layout: 'blank' },
     { path: '/auth/boxed-password-reset', element: <RecoverIdBoxed />, layout: 'blank' },

@@ -1,4 +1,4 @@
-import { GoogleUser } from '../types/googleAuthType';
+import { GoogleUser } from '../types/authResponse';
 
 export const mapGoogleUser = (data: any): GoogleUser => ({
     id: data.id || 0,

@@ -2,10 +2,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { useEffect, useState } from 'react';
 import { setPageTitle } from '../../store/themeConfigSlice';
-import { login as loginService } from '../../services/authService';
 import { loginSuccess } from '../../store/authSlice';
-import { googleLoginSuccess } from '../../store/googleAuthSlice';
 import { useGoogleAuth } from '../../hooks/useGoogleAuth';
+import { useLoginMutation } from '../../store/api/authApi';
 import IconMail from '../../components/Icon/IconMail';
 import IconLockDots from '../../components/Icon/IconLockDots';
 
@@ -19,6 +18,7 @@ const LoginBoxed = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { authenticateWithGoogle, loading } = useGoogleAuth();
+    const [login, { isLoading }] = useLoginMutation();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -28,28 +28,43 @@ const LoginBoxed = () => {
         dispatch(setPageTitle('Iniciar Sesión'));
     }, [dispatch]);
 
-    // 🔹 LOGIN CLÁSICO
+    // ----------------------------------------------------
+    // 🔹 LOGIN CLÁSICO (RTK Query + persistencia total)
+    // ----------------------------------------------------
     const submitForm = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+
         try {
-            const data = await loginService(email, password);
-            dispatch(loginSuccess({ user: data.user, token: data.token }));
-            navigate('/escritorio');
+            const data = await login({ email, password }).unwrap();
+
+            // ✅ Guardamos user + token + user_data
+            dispatch(
+                loginSuccess({
+                    user: data.user,
+                    token: data.token,
+                    user_data: data.user_data || [],
+                })
+            );
+
+            navigate('/clientes');
         } catch (err) {
-            console.error(err);
+            console.error('❌ Error al iniciar sesión:', err);
             setError('Usuario o contraseña incorrectos');
         }
     };
 
-    // 🔹 LOGIN CON GOOGLE (OAuth clásico, sin FedCM)
+    // ----------------------------------------------------
+    // 🔹 LOGIN CON GOOGLE
+    // ----------------------------------------------------
     const handleGoogleLogin = () => {
         const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
         const redirectUri = window.location.origin;
         const scope = 'openid email profile';
-        const responseType = 'token';
+        const responseType = 'id_token';
+        const nonce = Math.random().toString(36).substring(2);
 
-        const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=${responseType}&scope=${scope}&prompt=select_account`;
+        const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=${responseType}&scope=${scope}&prompt=select_account&nonce=${nonce}`;
 
         const width = 500;
         const height = 600;
@@ -70,33 +85,50 @@ const LoginBoxed = () => {
 
             try {
                 const url = new URL(popup.location.href);
+
                 if (url.origin === window.location.origin && url.hash) {
                     const params = new URLSearchParams(url.hash.slice(1));
-                    const accessToken = params.get('access_token');
-                    if (accessToken) {
-                        console.log('✅ Token de Google:', accessToken);
+                    const idToken = params.get("id_token");
+
+                    if (idToken) {
+
                         popup.close();
                         clearInterval(timer);
 
-                        // 🔹 Validar token con backend (plug & play)
                         try {
-                            const data = await authenticateWithGoogle(accessToken);
-                            if (data) {
-                                dispatch(googleLoginSuccess({ user: data.user, token: data.token }));
-                                navigate('/notificaciones');
+                            // 🚀 Enviamos el token al backend Flask
+                            const data = await authenticateWithGoogle(idToken);
+
+                            if (data && data.user && data.token) {
+
+                                // Guardamos en Redux igual que el login normal
+                                dispatch(
+                                    loginSuccess({
+                                        user: data.user,
+                                        token: data.token,
+                                        user_data: data.user_data || [],
+                                    })
+                                );
+
+                                navigate("/clientes");
+                            } else {
+                                setError("Error al iniciar sesión con Google");
                             }
                         } catch (err) {
-                            console.error(err);
-                            setError('Error al iniciar sesión con Google');
+                            setError("Error al iniciar sesión con Google");
                         }
                     }
                 }
             } catch {
-                // Cross-origin hasta que el popup vuelva al redirect_uri
+                // Cross-origin hasta que Google redirija al redirect_uri
             }
         }, 500);
     };
 
+
+    // ----------------------------------------------------
+    // 🔹 Render del componente
+    // ----------------------------------------------------
     return (
         <div>
             <div className="absolute inset-0">
@@ -131,6 +163,7 @@ const LoginBoxed = () => {
                                             className="form-input ps-10 placeholder:text-white-dark"
                                             value={email}
                                             onChange={(e) => setEmail(e.target.value)}
+                                            required
                                         />
                                         <span className="absolute start-4 top-1/2 -translate-y-1/2">
                                             <IconMail fill={true} />
@@ -148,6 +181,7 @@ const LoginBoxed = () => {
                                             className="form-input ps-10 placeholder:text-white-dark"
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
+                                            required
                                         />
                                         <span className="absolute start-4 top-1/2 -translate-y-1/2">
                                             <IconLockDots fill={true} />
@@ -159,12 +193,13 @@ const LoginBoxed = () => {
 
                                 <button
                                     type="submit"
+                                    disabled={isLoading}
                                     className="btn btn-gradient !mt-6 w-full border-0 uppercase shadow-[0_10px_20px_-10px_rgba(67,97,238,0.44)]"
                                 >
-                                    Ingresar
+                                    {isLoading ? 'Ingresando...' : 'Ingresar'}
                                 </button>
 
-                                {/* Botón de Google (tu diseño original) */}
+                                {/* Botón de Google */}
                                 <button
                                     type="button"
                                     onClick={handleGoogleLogin}

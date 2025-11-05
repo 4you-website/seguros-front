@@ -1,33 +1,55 @@
-import { useState, Fragment, useEffect } from "react";
+import { useState, useMemo, Fragment, useEffect } from "react";
+import { DataTable, DataTableSortStatus } from "mantine-datatable";
+import sortBy from "lodash/sortBy";
+import Swal, { SweetAlertIcon } from "sweetalert2";
 import { Dialog, DialogPanel, Transition, TransitionChild } from "@headlessui/react";
-import Swal from "sweetalert2";
 import { useDispatch } from "react-redux";
 import { setPageTitle } from "../../store/themeConfigSlice";
-import IconUserPlus from "../../components/Icon/IconUserPlus";
-import IconListCheck from "../../components/Icon/IconListCheck";
-import IconLayoutGrid from "../../components/Icon/IconLayoutGrid";
-import IconSearch from "../../components/Icon/IconSearch";
-import IconUser from "../../components/Icon/IconUser";
-import IconX from "../../components/Icon/IconX";
 
-import { useClientes } from "../../hooks/useClientes";
+import IconPlus from "../../components/Icon/IconPlus";
+import IconEdit from "../../components/Icon/IconEdit";
+import IconTrashLines from "../../components/Icon/IconTrashLines";
+import IconX from "../../components/Icon/IconX";
 import { Cliente } from "../../types/Cliente";
+
+import {
+    useGetClientesQuery,
+    useAddClienteMutation,
+    useUpdateClienteMutation,
+    useDeleteClienteMutation,
+} from "../../store/api/clientesApi";
+
+import { useGetStatesQuery } from "../../store/api/statesApi";
 
 // ----------------------------------------------------------------------
 
 const Clientes = () => {
     const dispatch = useDispatch();
-    const token = localStorage.getItem("token") || "";
 
-    // Hook de clientes (CRUD)
-    const { clientes, loading, fetchClientes, addCliente, editCliente, removeCliente } = useClientes();
+    useEffect(() => {
+        dispatch(setPageTitle("Clientes"));
+    }, [dispatch]);
+
+    const { data: states = [] } = useGetStatesQuery();
+    const { data: clientes = [], isLoading } = useGetClientesQuery();
+    const [addCliente] = useAddClienteMutation();
+    const [editCliente] = useUpdateClienteMutation();
+    const [removeCliente] = useDeleteClienteMutation();
 
     // -------------------------------
-    // Estados locales de UI
-    const [addContactModal, setAddContactModal] = useState(false);
-    const [view, setView] = useState<"list" | "grid">("list");
+    // Estados de tabla
+    const PAGE_SIZES = [10, 20, 30, 50, 100];
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
     const [search, setSearch] = useState("");
-    const [filtered, setFiltered] = useState<Cliente[]>([]);
+    const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
+        columnAccessor: "name",
+        direction: "asc",
+    });
+
+    // -------------------------------
+    // Estados del modal
+    const [modalOpen, setModalOpen] = useState(false);
     const [params, setParams] = useState<Cliente>({
         id: 0,
         name: "",
@@ -35,86 +57,105 @@ const Clientes = () => {
         email: "",
         phone: "",
         zipcode: "",
-        company_id: 1, // o dinámico según empresa logueada
+        vat: "",
+        is_company: false,
+        state_id: 0,
     });
 
     // -------------------------------
-    // Cargar clientes al montar
-    useEffect(() => {
-        dispatch(setPageTitle("Clientes"));
-        fetchClientes(token);
-    }, [dispatch, fetchClientes, token]);
+    // Filtrado + ordenamiento + paginación con useMemo (sin loops)
+    const filteredSortedRecords = useMemo(() => {
+        if (!clientes) return [];
+        const filtered = clientes.filter((c) =>
+            `${c.name} ${c.lastname}`.toLowerCase().includes(search.toLowerCase())
+        );
+        const sorted = sortBy(filtered, sortStatus.columnAccessor);
+        return sortStatus.direction === "desc" ? sorted.reverse() : sorted;
+    }, [clientes, search, sortStatus]);
+
+    const paginatedRecords = useMemo(() => {
+        const from = (page - 1) * pageSize;
+        return filteredSortedRecords.slice(from, from + pageSize);
+    }, [filteredSortedRecords, page, pageSize]);
 
     // -------------------------------
-    // Filtro de búsqueda
-    useEffect(() => {
-        if (clientes) {
-            const filteredList = clientes.filter((item) =>
-                `${item.name} ${item.lastname}`.toLowerCase().includes(search.toLowerCase())
-            );
-            setFiltered(filteredList);
-        }
-    }, [search, clientes]);
-
-    // -------------------------------
-    // Funciones de UI
-    const changeValue = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const { id, value } = e.target;
-        setParams({ ...params, [id]: value });
-    };
-
+    // Modal handlers
     const openModal = (cliente?: Cliente) => {
-        if (cliente) setParams(cliente);
-        else
-            setParams({
+        setParams(
+            cliente || {
                 id: 0,
                 name: "",
                 lastname: "",
                 email: "",
                 phone: "",
                 zipcode: "",
-                company_id: 1,
-            });
-        setAddContactModal(true);
+                vat: "",
+                is_company: false,
+                state_id: 0,
+            }
+        );
+        setModalOpen(true);
     };
 
-    const closeModal = () => setAddContactModal(false);
+    const closeModal = () => setModalOpen(false);
+
+    const changeValue = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { id, value } = e.target;
+        setParams({ ...params, [id]: value });
+    };
 
     // -------------------------------
-    // Guardar o actualizar cliente
+    // SweetAlert helper
+    const showMessage = (msg = "", type: SweetAlertIcon = "success") => {
+        Swal.fire({
+            icon: type,
+            title: msg,
+            toast: true,
+            position: "top",
+            showConfirmButton: false,
+            timer: 3000,
+            padding: "10px 20px",
+        });
+    };
+
+    // -------------------------------
+    // Guardar cliente
     const saveCliente = async () => {
         if (!params.name || !params.lastname || !params.email || !params.phone) {
             showMessage("Por favor, complete todos los campos obligatorios.", "error");
             return;
         }
 
+        closeModal();
+
         try {
             if (params.id) {
-                await editCliente(params.id, params, token);
+                await editCliente(params).unwrap();
                 showMessage("Cliente actualizado correctamente.");
             } else {
-                await addCliente(params, token);
+                await addCliente(params).unwrap();
                 showMessage("Cliente agregado correctamente.");
             }
-            closeModal();
         } catch {
             showMessage("Error al guardar el cliente.", "error");
         }
     };
 
-    const deleteCliente = async (id: number) => {
-        const confirm = await Swal.fire({
-            title: "¿Eliminar cliente?",
-            text: "Esta acción no se puede deshacer",
+    // -------------------------------
+    // Eliminar cliente
+    const handleDelete = async (id: number) => {
+        const confirmed = await Swal.fire({
+            title: "¿Estás seguro?",
+            text: "No podrás revertir esta acción",
             icon: "warning",
             showCancelButton: true,
             confirmButtonText: "Sí, eliminar",
             cancelButtonText: "Cancelar",
         });
 
-        if (confirm.isConfirmed) {
+        if (confirmed.isConfirmed) {
             try {
-                await removeCliente(id, token);
+                await removeCliente(id).unwrap();
                 showMessage("Cliente eliminado correctamente.");
             } catch {
                 showMessage("Error al eliminar cliente.", "error");
@@ -123,185 +164,157 @@ const Clientes = () => {
     };
 
     // -------------------------------
-    const showMessage = (msg: string, type: "success" | "error" = "success") => {
-        Swal.fire({
-            toast: true,
-            position: "top",
-            icon: type,
-            title: msg,
-            showConfirmButton: false,
-            timer: 2500,
-        });
-    };
+    // Render
+    if (isLoading) return <p className="p-5">Cargando clientes...</p>;
 
-    // -------------------------------
     return (
-        <div>
-            <div className="flex items-center justify-between flex-wrap gap-4">
-                <h2 className="text-xl">Clientes</h2>
-                <div className="flex sm:flex-row flex-col sm:items-center sm:gap-3 gap-4 w-full sm:w-auto">
-                    <div className="flex gap-3">
-                        <button type="button" className="btn btn-primary" onClick={() => openModal()}>
-                            <IconUserPlus className="ltr:mr-2 rtl:ml-2" />
-                            Agregar Cliente
-                        </button>
-
-                        <button
-                            type="button"
-                            className={`btn btn-outline-primary p-2 ${view === "list" && "bg-primary text-white"}`}
-                            onClick={() => setView("list")}
-                        >
-                            <IconListCheck />
-                        </button>
-                        <button
-                            type="button"
-                            className={`btn btn-outline-primary p-2 ${view === "grid" && "bg-primary text-white"}`}
-                            onClick={() => setView("grid")}
-                        >
-                            <IconLayoutGrid />
+        <div className="panel px-0 border-white-light dark:border-[#1b2e4b]">
+            <div className="clientes-table">
+                {/* Header */}
+                <div className="mb-4.5 px-5 flex md:clientes-center md:flex-row flex-col gap-5">
+                    <div className="flex clientes-center gap-2">
+                        <h1 className="font-bold text-2xl mr-5">Clientes</h1>
+                        <button type="button" className="btn btn-primary gap-2" onClick={() => openModal()}>
+                            <IconPlus />
+                            Agregar
                         </button>
                     </div>
 
-                    <div className="relative">
+                    <div className="ltr:ml-auto rtl:mr-auto">
                         <input
                             type="text"
-                            placeholder="Buscar cliente"
-                            className="form-input py-2 ltr:pr-11 rtl:pl-11 peer"
+                            className="form-input w-auto"
+                            placeholder="Buscar cliente..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
-                        <button
-                            type="button"
-                            className="absolute ltr:right-[11px] rtl:left-[11px] top-1/2 -translate-y-1/2 peer-focus:text-primary"
-                        >
-                            <IconSearch className="mx-auto" />
-                        </button>
                     </div>
                 </div>
-            </div>
 
-            {/* ------------------- Tabla ------------------- */}
-            {view === "list" && (
-                <div className="mt-5 panel p-0 border-0 overflow-hidden">
-                    {loading ? (
-                        <div className="p-6 text-center text-gray-500">Cargando clientes...</div>
-                    ) : filtered.length === 0 ? (
-                        <div className="p-6 text-center text-gray-400">No hay clientes registrados.</div>
-                    ) : (
-                        <div className="table-responsive">
-                            <table className="table-striped table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Nombre</th>
-                                        <th>Apellido</th>
-                                        <th>Email</th>
-                                        <th>Teléfono</th>
-                                        <th>Código Postal</th>
-                                        <th className="!text-center">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filtered.map((c) => (
-                                        <tr key={c.id}>
-                                            <td>{c.name}</td>
-                                            <td>{c.lastname}</td>
-                                            <td>{c.email}</td>
-                                            <td>{c.phone}</td>
-                                            <td>{c.zipcode}</td>
-                                            <td className="text-center">
-                                                <div className="flex gap-3 justify-center">
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-sm btn-outline-primary"
-                                                        onClick={() => openModal(c)}
-                                                    >
-                                                        Editar
+                {/* Tabla */}
+                <div className="datatables pagination-padding">
+                    <DataTable
+                        className="whitespace-nowrap table-hover invoice-table"
+                        records={paginatedRecords}
+                        columns={[
+                            { accessor: "name", title: "Nombre", sortable: true },
+                            { accessor: "lastname", title: "Apellido", sortable: true },
+                            { accessor: "email", title: "Email", sortable: true },
+                            { accessor: "phone", title: "Teléfono", sortable: true },
+                            { accessor: "zipcode", title: "Código Postal", sortable: true },
+                            {
+                                accessor: "action",
+                                title: "Acciones",
+                                sortable: false,
+                                textAlignment: "center",
+                                render: ({ id, ...cliente }) => (
+                                    <div className="flex gap-4 clientes-center w-max mx-auto">
+                                        <button
+                                            type="button"
+                                            className="flex hover:text-info"
+                                            onClick={() => openModal({ id, ...cliente } as Cliente)}
+                                        >
+                                            <IconEdit />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="flex hover:text-danger"
+                                            onClick={() => id && handleDelete(id)}
+                                        >
+                                            <IconTrashLines />
+                                        </button>
+                                    </div>
+                                ),
+                            },
+                        ]}
+                        highlightOnHover
+                        totalRecords={filteredSortedRecords.length}
+                        recordsPerPage={pageSize}
+                        page={page}
+                        onPageChange={setPage}
+                        recordsPerPageOptions={PAGE_SIZES}
+                        onRecordsPerPageChange={setPageSize}
+                        sortStatus={sortStatus}
+                        onSortStatusChange={setSortStatus}
+                        paginationText={({ from, to, totalRecords }) =>
+                            `Mostrando ${from} a ${to} de ${totalRecords} registros`
+                        }
+                    />
+                </div>
+
+                {/* Modal agregar/editar */}
+                <Transition appear show={modalOpen} as={Fragment}>
+                    <Dialog as="div" open={modalOpen} onClose={closeModal} className="relative z-[51]">
+                        <TransitionChild as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0">
+                            <div className="fixed inset-0 bg-[black]/60" />
+                        </TransitionChild>
+                        <div className="fixed inset-0 overflow-y-auto">
+                            <div className="flex min-h-full items-center justify-center px-4 py-8">
+                                <TransitionChild
+                                    as={Fragment}
+                                    enter="ease-out duration-300"
+                                    enterFrom="opacity-0 scale-95"
+                                    enterTo="opacity-100 scale-100"
+                                    leave="ease-in duration-200"
+                                    leaveFrom="opacity-100 scale-100"
+                                    leaveTo="opacity-0 scale-95"
+                                >
+                                    <DialogPanel className="panel border-0 p-0 rounded-lg overflow-hidden w-full max-w-lg text-black dark:text-white-dark">
+                                        <button
+                                            type="button"
+                                            onClick={closeModal}
+                                            className="absolute top-4 ltr:right-4 rtl:left-4 text-gray-400 hover:text-gray-800 dark:hover:text-gray-600 outline-none"
+                                        >
+                                            <IconX />
+                                        </button>
+                                        <div className="text-lg font-medium bg-[#fbfbfb] dark:bg-[#121c2c] ltr:pl-5 rtl:pr-5 py-3">
+                                            {params.id ? "Editar Cliente" : "Agregar Cliente"}
+                                        </div>
+                                        <div className="p-5">
+                                            <form>
+                                                <div className="mb-4">
+                                                    <label htmlFor="name">Nombre</label>
+                                                    <input id="name" type="text" className="form-input" value={params.name} onChange={changeValue} />
+                                                </div>
+                                                <div className="mb-4">
+                                                    <label htmlFor="lastname">Apellido</label>
+                                                    <input id="lastname" type="text" className="form-input" value={params.lastname} onChange={changeValue} />
+                                                </div>
+                                                <div className="mb-4">
+                                                    <label htmlFor="email">Email</label>
+                                                    <input id="email" type="email" className="form-input" value={params.email} onChange={changeValue} />
+                                                </div>
+                                                <div className="mb-4">
+                                                    <label htmlFor="phone">Teléfono</label>
+                                                    <input id="phone" type="text" className="form-input" value={params.phone} onChange={changeValue} />
+                                                </div>
+                                                <div className="mb-4">
+                                                    <label htmlFor="zipcode">Código Postal</label>
+                                                    <input id="zipcode" type="text" className="form-input" value={params.zipcode} onChange={changeValue} />
+                                                </div>
+
+                                                <div className="flex justify-end items-center mt-6">
+                                                    <button type="button" className="btn btn-outline-danger" onClick={closeModal}>
+                                                        Cancelar
                                                     </button>
                                                     <button
                                                         type="button"
-                                                        className="btn btn-sm btn-outline-danger"
-                                                        onClick={() => deleteCliente(c.id)}
+                                                        className="btn btn-primary ltr:ml-4 rtl:mr-4"
+                                                        onClick={saveCliente}
                                                     >
-                                                        Eliminar
+                                                        {params.id ? "Actualizar" : "Agregar"}
                                                     </button>
                                                 </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                            </form>
+                                        </div>
+                                    </DialogPanel>
+                                </TransitionChild>
+                            </div>
                         </div>
-                    )}
-                </div>
-            )}
+                    </Dialog>
+                </Transition>
 
-            {/* ------------------- Modal ------------------- */}
-            <Transition appear show={addContactModal} as={Fragment}>
-                <Dialog as="div" open={addContactModal} onClose={closeModal} className="relative z-[51]">
-                    <TransitionChild as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0">
-                        <div className="fixed inset-0 bg-[black]/60" />
-                    </TransitionChild>
-                    <div className="fixed inset-0 overflow-y-auto">
-                        <div className="flex min-h-full items-center justify-center px-4 py-8">
-                            <TransitionChild
-                                as={Fragment}
-                                enter="ease-out duration-300"
-                                enterFrom="opacity-0 scale-95"
-                                enterTo="opacity-100 scale-100"
-                                leave="ease-in duration-200"
-                                leaveFrom="opacity-100 scale-100"
-                                leaveTo="opacity-0 scale-95"
-                            >
-                                <DialogPanel className="panel border-0 p-0 rounded-lg overflow-hidden w-full max-w-lg text-black dark:text-white-dark">
-                                    <button
-                                        type="button"
-                                        onClick={closeModal}
-                                        className="absolute top-4 ltr:right-4 rtl:left-4 text-gray-400 hover:text-gray-800 dark:hover:text-gray-600 outline-none"
-                                    >
-                                        <IconX />
-                                    </button>
-                                    <div className="text-lg font-medium bg-[#fbfbfb] dark:bg-[#121c2c] ltr:pl-5 rtl:pr-5 py-3 ltr:pr-[50px] rtl:pl-[50px]">
-                                        {params.id ? "Editar Cliente" : "Agregar Cliente"}
-                                    </div>
-                                    <div className="p-5">
-                                        <form>
-                                            <div className="mb-4">
-                                                <label htmlFor="name">Nombre</label>
-                                                <input id="name" type="text" className="form-input" value={params.name} onChange={changeValue} />
-                                            </div>
-                                            <div className="mb-4">
-                                                <label htmlFor="lastname">Apellido</label>
-                                                <input id="lastname" type="text" className="form-input" value={params.lastname} onChange={changeValue} />
-                                            </div>
-                                            <div className="mb-4">
-                                                <label htmlFor="email">Email</label>
-                                                <input id="email" type="email" className="form-input" value={params.email} onChange={changeValue} />
-                                            </div>
-                                            <div className="mb-4">
-                                                <label htmlFor="phone">Teléfono</label>
-                                                <input id="phone" type="text" className="form-input" value={params.phone} onChange={changeValue} />
-                                            </div>
-                                            <div className="mb-4">
-                                                <label htmlFor="zipcode">Código Postal</label>
-                                                <input id="zipcode" type="text" className="form-input" value={params.zipcode} onChange={changeValue} />
-                                            </div>
-
-                                            <div className="flex justify-end items-center mt-6">
-                                                <button type="button" className="btn btn-outline-danger" onClick={closeModal}>
-                                                    Cancelar
-                                                </button>
-                                                <button type="button" className="btn btn-primary ltr:ml-4 rtl:mr-4" onClick={saveCliente}>
-                                                    {params.id ? "Actualizar" : "Agregar"}
-                                                </button>
-                                            </div>
-                                        </form>
-                                    </div>
-                                </DialogPanel>
-                            </TransitionChild>
-                        </div>
-                    </div>
-                </Dialog>
-            </Transition>
+            </div>
         </div>
     );
 };

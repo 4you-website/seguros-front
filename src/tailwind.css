@@ -573,7 +573,7 @@ hover:text-primary hover:before:!bg-primary ltr:before:mr-2 rtl:before:ml-2 dark
 
 /* swal2 */
 .swal2-container .swal2-close {
-    @apply text-white hover:text-dark-light focus:shadow-none;
+    @apply text-white hover:text-dark-light focus:shadow-none ;
 }
 
 .swal2-container .swal2-popup.swal2-toast {
@@ -582,7 +582,7 @@ hover:text-primary hover:before:!bg-primary ltr:before:mr-2 rtl:before:ml-2 dark
 
 .swal2-popup.swal2-toast .swal2-title,
 .swal2-container .swal2-popup.swal2-toast .swal2-html-container {
-    @apply text-white;
+    @apply text-white text-lg;
 }
 .swal2-container .swal2-popup.swal2-toast.color-primary {
     @apply bg-primary;

@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { verifyGoogleToken } from '../services/googleAuthService';
-import { GoogleAuthResponse } from '../types/googleAuthType';
+import { AuthResponse } from '../types/authResponse';
 
 export function useGoogleAuth() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const authenticateWithGoogle = async (accessToken: string): Promise<GoogleAuthResponse | null> => {
+    const authenticateWithGoogle = async (accessToken: string): Promise<AuthResponse | null> => {
         try {
             setLoading(true);
             setError(null);

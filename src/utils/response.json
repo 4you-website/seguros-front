@@ -1,0 +1,132 @@
+{
+  "bienesCotizados": [
+    {
+      "bien": " TOYOTA ETIOS 1.5 5 PTAS XLS 4AT      L/18 2018  NACIONAL",
+      "sumaAsegurada": "20002500"
+    }
+  ],
+  "fechaCotizacion": "04/11/2025",
+  "numeroCotizacion": "118058907",
+  "planes": [
+    {
+      "descripcion": "TERCEROS COMPLETOS FULL",
+      "descripcionAdicional": "",
+      "plan": "22",
+      "promocionesPorPlan": [
+        {
+          "codigoPromocion": "PSPLUS",
+          "comision": "24046.74",
+          "descripcion": "PSPLUS - Vehículos de 0 a 10 Años",
+          "premio": "230670",
+          "primaComisionable": "184358.31",
+          "vigencia": "MENSUAL"
+        }
+      ]
+    },
+    {
+      "descripcion": "RC, ROB/HURTO, INC, DEST TOTAL",
+      "descripcionAdicional": "",
+      "plan": "1",
+      "promocionesPorPlan": [
+        {
+          "codigoPromocion": "PSTOTAL",
+          "comision": "20360.72",
+          "descripcion": "PSTOTAL - Vehículos de 0 a 20 años",
+          "premio": "195854",
+          "primaComisionable": "156098.88",
+          "vigencia": "MENSUAL"
+        }
+      ]
+    },
+    {
+      "descripcion": " TERCEROS COMPLETOS",
+      "descripcionAdicional": "",
+      "plan": "2",
+      "promocionesPorPlan": [
+        {
+          "codigoPromocion": "PSTOTAL",
+          "comision": "25194.41",
+          "descripcion": "PSTOTAL - Vehículos de 0 a 20 años",
+          "premio": "241510",
+          "primaComisionable": "193157.13",
+          "vigencia": "MENSUAL"
+        }
+      ]
+    },
+    {
+      "descripcion": "RESPONSABILIDAD CIVIL LIMITADA",
+      "descripcionAdicional": "",
+      "plan": "4",
+      "promocionesPorPlan": [
+        {
+          "codigoPromocion": "PSTOTAL",
+          "comision": "11708.02",
+          "descripcion": "PSTOTAL - Vehículos de 0 a 20 años",
+          "premio": "113304",
+          "primaComisionable": "89761.5",
+          "vigencia": "MENSUAL"
+        }
+      ]
+    },
+    {
+      "descripcion": "RC, INCENDIO Y ROBO/HURTO TOTAL",
+      "descripcionAdicional": "",
+      "plan": "7",
+      "promocionesPorPlan": [
+        {
+          "codigoPromocion": "PSTOTAL",
+          "comision": "16664.69",
+          "descripcion": "PSTOTAL - Vehículos de 0 a 20 años",
+          "premio": "160944",
+          "primaComisionable": "127762.6",
+          "vigencia": "MENSUAL"
+        }
+      ]
+    },
+    {
+      "descripcion": "RC, INC/ ROB/HURTO TOTAL Y PARCIAL",
+      "descripcionAdicional": "",
+      "plan": "8",
+      "promocionesPorPlan": [
+        {
+          "codigoPromocion": "PSTOTAL",
+          "comision": "19752.86",
+          "descripcion": "PSTOTAL - Vehículos de 0 a 20 años",
+          "premio": "190113",
+          "primaComisionable": "151438.62",
+          "vigencia": "MENSUAL"
+        }
+      ]
+    },
+    {
+      "descripcion": "TODO RIESGO CON FRANQUICIA",
+      "descripcionAdicional": " Nacional 2.5% - Minimo $1500000, Importado 5.5% Minimo $1850000",
+      "plan": "40",
+      "promocionesPorPlan": [
+        {
+          "codigoPromocion": "PSPLUS",
+          "comision": "31330.59",
+          "descripcion": "PSPLUS - Vehículos de 0 a 10 Años",
+          "premio": "299468",
+          "primaComisionable": "240201.16",
+          "vigencia": "MENSUAL"
+        }
+      ]
+    },
+    {
+      "descripcion": "TODO RIESGO FRANQUICIA FIJA",
+      "descripcionAdicional": "  Nacional $2300000  Importado $3300000",
+      "plan": "43",
+      "promocionesPorPlan": [
+        {
+          "codigoPromocion": "PSPLUS",
+          "comision": "34534.57",
+          "descripcion": "PSPLUS - Vehículos de 0 a 10 Años",
+          "premio": "329731",
+          "primaComisionable": "264765.05",
+          "vigencia": "MENSUAL"
+        }
+      ]
+    }
+  ]
+}

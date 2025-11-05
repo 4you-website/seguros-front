@@ -1,5 +1,5 @@
 
-import { User } from "./user";
+import { User } from "./User";
 
 export interface AuthResponse {
     user: User;

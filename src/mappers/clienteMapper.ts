@@ -1,4 +1,3 @@
-// src/mappers/clienteMapper.ts
 import { Cliente } from "../types/Cliente";
 
 export const mapClienteFromApi = (data: any): Cliente => ({
@@ -8,15 +7,19 @@ export const mapClienteFromApi = (data: any): Cliente => ({
     email: data.email,
     phone: data.phone,
     zipcode: data.zipcode,
-    company_id: data.company_id,
+    vat: data.vat,
+    is_company: data.is_company,
+    state_id: data.state_id,
 });
 
-export const mapClienteToApi = (cliente: Cliente): any => ({
+export const mapClienteToApi = (cliente: Cliente) => ({
     id: cliente.id,
     name: cliente.name,
     lastname: cliente.lastname,
     email: cliente.email,
     phone: cliente.phone,
     zipcode: cliente.zipcode,
-    company_id: cliente.company_id,
+    vat: cliente.vat,
+    is_company: cliente.is_company,
+    state_id: cliente.state_id,
 });
