@@ -142,13 +142,13 @@ const Header = () => {
     const { t } = useTranslation();
 
     return (
-        <header className={`z-40 ${themeConfig.semidark && themeConfig.menu === 'horizontal' ? 'dark' : ''}`}>
+        <header className={`z-40 ${themeConfig.semidark && themeConfig.menu === 'horizontal' ? 'dark' : ''} `}>
             <div className="shadow-sm">
                 <div className="relative bg-white flex w-full items-center px-5 py-2.5 dark:bg-black">
                     <div className="horizontal-logo flex lg:hidden justify-between items-center ltr:mr-2 rtl:ml-2">
                         <Link to="/" className="main-logo flex items-center shrink-0">
-                            <img className="w-8 ltr:-ml-1 rtl:-mr-1 inline" src="/assets/images/logo.svg" alt="logo" />
-                            <span className="text-2xl ltr:ml-1.5 rtl:mr-1.5  font-semibold  align-middle hidden md:inline dark:text-white-light transition-all duration-300">VRISTO</span>
+                            <img className="w-8 ltr:-ml-1 rtl:-mr-1 inline" src="/favicon.png" alt="logo" />
+                            <span className="text-2xl ltr:ml-1.5 rtl:mr-1.5  font-semibold  align-middle hidden md:inline dark:text-white-light transition-all duration-300">Seguros</span>
                         </Link>
                         <button
                             type="button"
@@ -161,7 +161,7 @@ const Header = () => {
                         </button>
                     </div>
 
-                    <div className="ltr:mr-2 rtl:ml-2 hidden sm:block">
+                    <div className="ltr:mr-2 rtl:ml-2 hidden ">
                         <ul className="flex items-center space-x-2 rtl:space-x-reverse dark:text-[#d0d2d6]">
                             <li>
                                 <Link to="/apps/calendar" className="block p-2 rounded-full bg-white-light/40 dark:bg-dark/40 hover:text-primary hover:bg-white-light/90 dark:hover:bg-dark/60">
@@ -183,10 +183,10 @@ const Header = () => {
                     <div className="sm:flex-1 ltr:sm:ml-0 ltr:ml-auto sm:rtl:mr-0 rtl:mr-auto flex items-center space-x-1.5 lg:space-x-2 rtl:space-x-reverse dark:text-[#d0d2d6]">
                         <div className="sm:ltr:mr-auto sm:rtl:ml-auto">
                             <form
-                                className={`${search && '!block'} sm:relative absolute inset-x-0 sm:top-0 top-1/2 sm:translate-y-0 -translate-y-1/2 sm:mx-0 mx-4 z-10 sm:block hidden`}
+                                className={`${search && '!block'}  sm:relative absolute inset-x-0 sm:top-0 top-1/2 sm:translate-y-0 -translate-y-1/2 sm:mx-0 mx-4 z-10 sm:block hidden`}
                                 onSubmit={() => setSearch(false)}
                             >
-                                <div className="relative">
+                                <div className="relative hidden">
                                     <input
                                         type="text"
                                         className="form-input ltr:pl-9 rtl:pr-9 ltr:sm:pr-4 rtl:sm:pl-4 ltr:pr-9 rtl:pl-9 peer sm:bg-transparent bg-gray-100 placeholder:tracking-widest"
@@ -248,7 +248,7 @@ const Header = () => {
                                 </button>
                             )}
                         </div>
-                        <div className="dropdown shrink-0">
+                        <div className="dropdown shrink-0 hidden">
                             <Dropdown
                                 offset={[0, 8]}
                                 placement={`${isRtl ? 'bottom-start' : 'bottom-end'}`}
@@ -277,7 +277,7 @@ const Header = () => {
                                 </ul>
                             </Dropdown>
                         </div>
-                        <div className="dropdown shrink-0">
+                        <div className="dropdown shrink-0 hidden">
                             <Dropdown
                                 offset={[0, 8]}
                                 placement={`${isRtl ? 'bottom-start' : 'bottom-end'}`}
@@ -340,7 +340,7 @@ const Header = () => {
                                 </ul>
                             </Dropdown>
                         </div>
-                        <div className="dropdown shrink-0">
+                        <div className="dropdown shrink-0 hidden">
                             <Dropdown
                                 offset={[0, 8]}
                                 placement={`${isRtl ? 'bottom-start' : 'bottom-end'}`}
@@ -414,58 +414,18 @@ const Header = () => {
                                 </ul>
                             </Dropdown>
                         </div>
-                        <div className="dropdown shrink-0 flex">
-                            <Dropdown
-                                offset={[0, 8]}
-                                placement={`${isRtl ? 'bottom-start' : 'bottom-end'}`}
-                                btnClassName="relative group block"
-                                button={<img className="w-9 h-9 rounded-full object-cover saturate-50 group-hover:saturate-100" src="/assets/images/user-profile.jpeg" alt="userProfile" />}
+                        <div className="shrink-0 flex">
+                            <button
+                                type="button"
+                                onClick={logout}
+                                className="flex items-center justify-center rounded-full w-9 h-9 hover:bg-white-light/40 dark:hover:bg-white-light/10 transition text-danger"
+                                title="Cerrar sesión"
                             >
-                                <ul className="text-dark dark:text-white-dark !py-0 w-[230px] font-semibold dark:text-white-light/90">
-                                    <li>
-                                        <div className="flex items-center px-4 py-4">
-                                            <img className="rounded-md w-10 h-10 object-cover" src="/assets/images/user-profile.jpeg" alt="userProfile" />
-                                            <div className="ltr:pl-4 rtl:pr-4 truncate">
-                                                <h4 className="text-base">
-                                                    John Doe
-                                                    <span className="text-xs bg-success-light rounded text-success px-1 ltr:ml-2 rtl:ml-2">Pro</span>
-                                                </h4>
-                                                <button type="button" className="text-black/60 hover:text-primary dark:text-dark-light/60 dark:hover:text-white">
-                                                    johndoe@gmail.com
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </li>
-                                    <li>
-                                        <Link to="/users/profile" className="dark:hover:text-white">
-                                            <IconUser className="w-4.5 h-4.5 ltr:mr-2 rtl:ml-2 shrink-0" />
-                                            Cuenta
-                                        </Link>
-                                    </li>
-                                    <li>
-                                        <Link to="/apps/mailbox" className="dark:hover:text-white">
-                                            <IconMail className="w-4.5 h-4.5 ltr:mr-2 rtl:ml-2 shrink-0" />
-                                            Inbox
-                                        </Link>
-                                    </li>
-                                    <li>
-                                        <Link to="/auth/boxed-lockscreen" className="dark:hover:text-white">
-                                            <IconLockDots className="w-4.5 h-4.5 ltr:mr-2 rtl:ml-2 shrink-0" />
-                                            Lock Screen
-                                        </Link>
-                                    </li>
-                                    <li className="border-t border-white-light dark:border-white-light/10">
-                                        <button
-                                            onClick={logout}
-                                            className="flex items-center w-full text-danger !py-3 px-4 hover:bg-white-light/40 dark:hover:bg-white-light/10 transition"
-                                        >
-                                            <IconLogout className="w-4.5 h-4.5 ltr:mr-2 rtl:ml-2 rotate-90 shrink-0" />
-                                            Cerrar Sesión
-                                        </button>
-                                    </li>
-                                </ul>
-                            </Dropdown>
+                                <IconLogout className="w-5 h-5 rotate-90" />
+                            </button>
                         </div>
+
+
                     </div>
                 </div>
 

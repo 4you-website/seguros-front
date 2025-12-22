@@ -25,6 +25,8 @@ import IconSettings from '../../Icon/IconSettings';
 import IconCashBanknotes from '../../Icon/IconCashBanknotes';
 import IconDollarSign from '../../Icon/IconDollarSign';
 import IconDollarSignCircle from '../../Icon/IconDollarSignCircle';
+import IconUser from '../../Icon/IconUser';
+import IconUsers from '../../Icon/IconUsers';
 
 
 export interface SidebarItem {
@@ -43,25 +45,12 @@ export interface SidebarSection {
 export const sidebarConfig: SidebarSection[] = [
     {
         items: [
-            {
-                label: 'Escritorio',
-                icon: IconMenuDashboard,
-                children: [
-                    { label: 'Clientes', path: '/clientes' },
-                    { label: 'Compañias', path: '/companias' },
-                    { label: 'Marcas', path: '/marcas' },
-                    { label: 'Modelos', path: '/modelos' },
-                    { label: 'Ventas', path: '/' },
-                    { label: 'Analítica', path: '/analytics' },
-                    { label: 'Finanzas', path: '/finance' },
-                    { label: 'Cripto', path: '/crypto' },
-                ],
-            },
-            { label: 'Configuración', icon: IconSettings, path: '/configuracion' },
             { label: 'Cotizador', icon: IconDollarSignCircle, path: '/cotizador' },
+            { label: 'Clientes', icon: IconUsers, path: '/clientes' },
+            { label: 'Configuración', icon: IconSettings, path: '/configuracion' },
         ],
     },
-    {
+  /*   {
         title: 'Aplicaciones',
         items: [
             { label: 'Chat', icon: IconMenuChat, path: '/apps/chat' },
@@ -233,5 +222,5 @@ export const sidebarConfig: SidebarSection[] = [
                 target: '_blank',
             },
         ],
-    },
+    }, */
 ];

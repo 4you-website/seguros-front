@@ -10,7 +10,7 @@ export * from "./Brand"
 export * from "./Model"
 export * from "./State"
 export * from "./Cotizacion"
-
+export * from "./integraciones"
 
 
 

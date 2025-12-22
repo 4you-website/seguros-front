@@ -1,216 +1,189 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import Swal, { SweetAlertIcon } from "sweetalert2";
+
 import { setPageTitle } from "../../store/themeConfigSlice";
-import { useGetUserQuery } from "../../store/api/authApi";
 import { IRootState } from "../../store";
 
-import IconLinkedin from "../../components/Icon/IconLinkedin";
-import IconTwitter from "../../components/Icon/IconTwitter";
-import IconFacebook from "../../components/Icon/IconFacebook";
-import IconGithub from "../../components/Icon/IconGithub";
+import { INTEGRACIONES_CONFIG, IntegracionKey } from "../../types/integraciones";
+import { useUpdateUserDataFieldMutation } from "../../store/api/usersFieldsApi";
+
+// ------------------------------------------------------------
+
+type ValuesMap = Record<number, string>;
 
 const UserConfig = () => {
     const dispatch = useDispatch();
 
-    // 🧠 Obtenemos el usuario desde Redux (authSlice)
+    // 🧠 Usuario desde Redux (authSlice)
     const userData = useSelector((state: IRootState) => state.auth.user);
 
+    // -------------------------------
+    // Estados generales (por si luego agregás PUT /users)
+    const [general, setGeneral] = useState({ name: "", email: "" });
+
+    // -------------------------------
+    // Integraciones: valores editables por field_id
+    const [values, setValues] = useState<ValuesMap>({});
+    const [savingKey, setSavingKey] = useState<IntegracionKey | null>(null);
+
+    const [updateUserDataField] = useUpdateUserDataFieldMutation();
+
+    // -------------------------------
+    // Helpers UI
+    const showMessage = (msg = "", type: SweetAlertIcon = "success") => {
+        Swal.fire({
+            icon: type,
+            title: msg,
+            toast: true,
+            position: "top",
+            showConfirmButton: false,
+            timer: 2500,
+            padding: "10px 20px",
+        });
+    };
+
+    // -------------------------------
     useEffect(() => {
         dispatch(setPageTitle("Configuración de Usuario"));
     }, [dispatch]);
 
-    // Estado local editable (relleno con los datos del usuario)
-    const [user, setUser] = useState({
-        name: "",
-        email: "",
-    });
-
-    // 🔹 Sincronizar el formulario cuando se carga el usuario
+    // -------------------------------
+    // Sincronizar formulario general y mapa de integraciones cuando llega el usuario
     useEffect(() => {
-        if (userData) {
-            setUser({
-                name: userData.username || "",
-                email: userData.email || "",
-            });
-        }
+        if (!userData) return;
+
+        setGeneral({
+            name: userData.username || "",
+            email: userData.email || "",
+        });
+
+        const nextValues: ValuesMap = {};
+        (userData.user_data || []).forEach((f: any) => {
+            nextValues[f.field_id] = f.value ?? "";
+        });
+        setValues(nextValues);
     }, [userData]);
 
-    const handleChange = (
-        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-    ) => {
-        const { id, value, type, checked } = e.target as HTMLInputElement;
-        setUser({
-            ...user,
-            [id]: type === "checkbox" ? checked : value,
-        });
+    // -------------------------------
+    const handleGeneralChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { id, value } = e.target;
+        setGeneral((prev) => ({ ...prev, [id]: value }));
     };
 
-    const handleSave = () => {
-        console.log("Guardando usuario:", user);
-        // Más adelante: acá irá el PUT /users/{id}
+    const setFieldValue = (fieldId: number, newValue: string) => {
+        setValues((prev) => ({ ...prev, [fieldId]: newValue }));
     };
 
-    // 🧭 Estados de carga o error — ahora vienen de la lógica, no de RTK Query
+    // -------------------------------
+    // Actualizar por marca (hace N PUTs, uno por field_id de esa marca)
+    const handleUpdateBrand = async (key: IntegracionKey) => {
+        const config = INTEGRACIONES_CONFIG.find((c) => c.key === key);
+        if (!config) return;
+
+        setSavingKey(key);
+
+        try {
+            await Promise.all(
+                config.fields.map((f) =>
+                    updateUserDataField({
+                        field_id: f.field_id,
+                        value: values[f.field_id] ?? "",
+                    }).unwrap()
+                )
+            );
+
+            showMessage(`Integración ${config.title} actualizada correctamente.`);
+        } catch (err) {
+            showMessage(`Error al actualizar ${config.title}.`, "error");
+        } finally {
+            setSavingKey(null);
+        }
+    };
+
+    // -------------------------------
     if (!userData) {
         return <p className="text-center mt-10">Cargando datos del usuario...</p>;
     }
 
     return (
         <div>
-            {/* Breadcrumb */}
-            {/*  <ul className="flex space-x-2 rtl:space-x-reverse">
-                <li>
-                    <span className="text-primary hover:underline">Usuarios</span>
-                </li>
-                <li className="before:content-['/'] ltr:before:mr-2 rtl:before:ml-2">
-                    <span>Configuración</span>
-                </li>
-            </ul> */}
-
             <div className="pt-5">
                 <div className="flex items-center justify-between mb-5">
-                    <h5 className="font-semibold text-lg dark:text-white-light">Configuración del usuario</h5>
+                    <h5 className="font-semibold text-lg dark:text-white-light">
+                        Configuración del usuario
+                    </h5>
                 </div>
-
-                {/* Formulario principal */}
-                <form className="border border-[#ebedf2] dark:border-[#191e3a] rounded-md p-4 mb-5 bg-white dark:bg-black">
-                    <h6 className="text-lg font-bold mb-5">Información general</h6>
-                    <div className="flex flex-col sm:flex-row">
-                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-5">
-                            <div>
-                                <label htmlFor="name">Nombre Usuario</label>
-                                <input
-                                    id="name"
-                                    type="text"
-                                    placeholder="Ej: admin"
-                                    className="form-input"
-                                    value={user.name}
-                                    onChange={handleChange}
-                                />
-                            </div>
-
-                            <div>
-                                <label htmlFor="email">Email</label>
-                                <input
-                                    id="email"
-                                    type="email"
-                                    placeholder="Ej: romina.koniuch@seguros.com"
-                                    className="form-input"
-                                    value={user.email}
-                                    disabled
-                                />
-                            </div>
-
-
-                            <div className="sm:col-span-2 mt-3">
-                                <button
-                                    type="button"
-                                    className="btn btn-primary"
-                                    onClick={handleSave}
-                                >
-                                    Guardar cambios
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </form>
-
-                {/* Integraciones */}
-                <form className="border border-[#ebedf2] dark:border-[#191e3a] rounded-md p-4 bg-white dark:bg-black">
+                {/* Integraciones: 3 paneles */}
+                <div className="border border-[#ebedf2] dark:border-[#191e3a] rounded-md p-4 bg-white dark:bg-black">
                     <h6 className="text-lg font-bold mb-5">Integraciones</h6>
 
-                    {!userData?.user_data?.length ? (
-                        <p className="text-gray-400 italic">No hay integraciones configuradas.</p>
-                    ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-    {userData.user_data.map((item) => (
-        <div
-            key={item.field_id}
-            className="flex items-center gap-3 bg-white dark:bg-[#111827] border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-sm"
-        >
-            {/* Logo aseguradora */}
-            <div className="flex-shrink-0 flex justify-center items-center">
-                {item.field_name.includes("atm") && (
-                    <img
-                        src="/assets/images/atm-cropped-favicon-32x32.png"
-                        alt="ATM"
-                        className="w-10 h-10 rounded-full object-cover"
-                    />
-                )}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                        {INTEGRACIONES_CONFIG.map((cfg) => {
+                            const isSaving = savingKey === cfg.key;
 
-                {item.field_name.includes("sancor") && (
-                    <img
-                        src="/assets/images/sancor-logo.svg"
-                        alt="Sancor"
-                        className="w-16 h-10 object-contain rounded-md bg-white p-1"
-                    />
-                )}
+                            return (
+                                <div
+                                    key={cfg.key}
+                                    className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 bg-white dark:bg-[#0b1220] shadow-sm"
+                                >
+                                    {/* Header */}
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <img
+                                            src={cfg.logoSrc}
+                                            alt={cfg.title}
+                                            className={cfg.logoClassName || "w-10 h-10 rounded-full object-cover"}
+                                        />
+                                        <div>
+                                            <p className="font-bold text-base">{cfg.title}</p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                            </p>
+                                        </div>
+                                    </div>
 
-                {item.field_name.includes("provincia") && (
-                    <img
-                        src="/assets/images/provincia-logo.png"
-                        alt="Provincia Seguros"
-                        className="w-16 h-10 object-contain rounded-md bg-white p-1"
-                    />
-                )}
+                                    {/* Fields */}
+                                    <div className="space-y-3">
+                                        {cfg.fields.map((f) => (
+                                            <div key={f.field_id}>
+                                                <label
+                                                    htmlFor={`field-${f.field_id}`}
+                                                    className="block text-sm font-semibold text-gray-700 dark:text-gray-300"
+                                                >
+                                                    {f.label}
+                                                </label>
 
-                {/* Fallback genérico */}
-                {!item.field_name.includes("atm") &&
-                    !item.field_name.includes("sancor") &&
-                    !item.field_name.includes("provincia") && (
-                        <img
-                            src="/assets/images/default-logo.png"
-                            alt="Integración"
-                            className="w-10 h-10 rounded-full object-cover opacity-80"
-                        />
-                    )}
-            </div>
+                                                <input
+                                                    id={`field-${f.field_id}`}
+                                                    autoComplete="off"
+                                                    type={f.inputType}
+                                                    className="form-input w-full mt-1"
+                                                    placeholder={f.placeholder}
+                                                    value={values[f.field_id] ?? ""}
+                                                    onChange={(e) => setFieldValue(f.field_id, e.target.value)}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
 
-            {/* Campos de usuario / contraseña */}
-            <div className="flex-1">
-                <label
-                    htmlFor={`field-${item.field_id}`}
-                    className="block text-sm font-semibold text-gray-700 dark:text-gray-300 capitalize"
-                >
-                    {item.field_name
-                        .replace(/_/g, " ")
-                        .replace("username", "Usuario")
-                        .replace("password", "Contraseña")}
-                </label>
-
-                <input
-                    id={`field-${item.field_id}`}
-                    type={
-                        item.field_name.includes("password")
-                            ? "password"
-                            : "text"
-                    }
-                    className="form-input w-full mt-1"
-                    value={item.value || ""}
-                    onChange={(e) => {
-                        const newValue = e.target.value;
-                        const updatedFields =
-                            userData.user_data?.map((f) =>
-                                f.field_id === item.field_id
-                                    ? { ...f, value: newValue }
-                                    : f
-                            ) ?? [];
-
-                        setUser((prev) => ({
-                            ...prev,
-                            user_data: updatedFields,
-                        }));
-                    }}
-                />
-            </div>
-        </div>
-    ))}
-</div>
-
-
-                    )}
-                </form>
-
+                                    {/* Action */}
+                                    <div className="flex justify-end mt-4">
+                                        <button
+                                            type="button"
+                                            className="btn btn-primary gap-2"
+                                            onClick={() => handleUpdateBrand(cfg.key)}
+                                            disabled={isSaving}                                        
+                                        >
+                                            {isSaving && (
+                                                <span className="inline-block w-4 h-4 rounded-full border-2 border-white border-l-transparent animate-spin" />
+                                            )}
+                                            {isSaving ? "Actualizando..." : "Actualizar"}
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
             </div>
         </div>
     );

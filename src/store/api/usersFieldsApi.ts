@@ -1,6 +1,5 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { UserField } from "../../types/UserField";
-
+import type { UserField } from "../../types";
 
 export const usersFieldsApi = createApi({
     reducerPath: "usersFieldsApi",
@@ -18,7 +17,22 @@ export const usersFieldsApi = createApi({
             query: () => "/users/fields",
             providesTags: ["UsersFields"],
         }),
+
+        // ✅ PUT /users/data/{field_id}
+        updateUserDataField: builder.mutation<
+            UserField,
+            { field_id: number; value: string }
+        >({
+            query: ({ field_id, value }) => ({
+                url: `/users/data/${field_id}`,
+                method: "PUT",
+                body: { value }, // ✅ en el body va el nuevo dato
+            }),
+        }),
     }),
 });
 
-export const { useGetUsersFieldsQuery } = usersFieldsApi;
+export const {
+    useGetUsersFieldsQuery,
+    useUpdateUserDataFieldMutation,
+} = usersFieldsApi;
