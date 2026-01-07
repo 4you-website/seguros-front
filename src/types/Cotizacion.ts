@@ -27,3 +27,29 @@ export interface Cotizacion {
     planes: CotizacionPlan[];
     raw?: any; // por si necesitás el objeto crudo más adelante
 }
+
+
+export type CotizacionPlanApi = {
+    ajuste?: string;
+    comision: number;
+    cubre: string;
+    cuota: number;
+    frecuencia: string;
+    id_cotizacion: string;
+    plan: string;
+    suma_asegurada: number;
+};
+
+export type AseguradoraSeleccionada = Record<string, CotizacionPlanApi[]>;
+
+export type GuardarCotizacionPayload = {
+    anio: number;
+    aseguradora: AseguradoraSeleccionada[];
+    brand_id: number;
+    client_id: number;
+    codigo_postal: string;
+    es0km: boolean;
+    fecha: string; // YYYY-MM-DD
+    model_id: number;
+    valor_vehiculo: number;
+};

@@ -11,6 +11,7 @@ import { brandsApi } from "./api/brandsApi";
 import { modelsApi } from "./api/modelsApi";
 import { cotizadorApi } from "./api/cotizadorApi";
 import { assuranceApi } from "./api/assuranceApi";
+import { quotationsApi } from "./api/quotationsApi";
 
 const rootReducer = combineReducers({
     themeConfig: themeConfigSlice,
@@ -25,6 +26,9 @@ const rootReducer = combineReducers({
     [modelsApi.reducerPath]: modelsApi.reducer,
     [cotizadorApi.reducerPath]: cotizadorApi.reducer,
     [assuranceApi.reducerPath]: assuranceApi.reducer,
+    [quotationsApi.reducerPath]: quotationsApi.reducer,
+    
+    
 
 });
 
@@ -41,8 +45,8 @@ export const store = configureStore({
             .concat(brandsApi.middleware)
             .concat(modelsApi.middleware)
             .concat(cotizadorApi.middleware)
-            .concat(assuranceApi.middleware),
-            
+            .concat(assuranceApi.middleware)
+            .concat(quotationsApi.middleware),
 
 });
 

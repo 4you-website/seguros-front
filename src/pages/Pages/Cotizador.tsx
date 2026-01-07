@@ -1,46 +1,39 @@
-import { useEffect, useState, type CSSProperties } from "react";
+// src/pages/Cotizador/Cotizador.tsx
+import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useDispatch } from "react-redux";
 import { setPageTitle } from "../../store/themeConfigSlice";
-import Swal from "sweetalert2";
+import Swal, { type SweetAlertIcon } from "sweetalert2";
+import { Dialog, DialogPanel, Transition, TransitionChild } from "@headlessui/react";
+
 import IconSend from "../../components/Icon/IconSend";
+import IconSave from "../../components/Icon/IconSave";
+import IconChecks from "../../components/Icon/IconChecks";
+import IconX from "../../components/Icon/IconX";
+import IconPlus from "../../components/Icon/IconPlus";
+
 import Select from "react-select";
 
 import { useGetBrandsQuery } from "../../store/api/brandsApi";
 import { useGetModelsQuery } from "../../store/api/modelsApi";
 import { useGetStatesQuery } from "../../store/api/statesApi";
 
+import { useGetClientesQuery, useAddClienteMutation } from "../../store/api/clientesApi";
+// 👉 Asegurate de tener este hook en tu quotationsApi (POST /quotations/result)
+import { useAddQuotationResultMutation } from "../../store/api/quotationsApi";
+
 import { compartirPorWhatsApp } from "../../utils/whatsappUtils";
 import { formatNumber } from "../../utils/formatNumber";
 
 import { getLocalidadesByProvincia } from "../../utils/localidadesUtils";
-import {
-    findStateByProvinciaNombre,
-    mapApiProvinceNameToLocalidades,
-} from "../../utils/matchProvinciaJSONvsAPI";
-
-import IconSave from "../../components/Icon/IconSave";
-import IconChecks from "../../components/Icon/IconChecks";
+import { findStateByProvinciaNombre, mapApiProvinceNameToLocalidades } from "../../utils/matchProvinciaJSONvsAPI";
 
 import { useCotizarMutation } from "../../store/api/assuranceApi";
 import type { CotizarPayload, Cotizacion, CotizacionPlan } from "../../types/Cotizacion";
+import type { Cliente } from "../../types/Cliente";
 
-// ⭐ Catálogo de compañías para las cápsulas
-const COMPANIAS = [
-    { id: "atm", label: "ATM" },
-    { id: "provincia", label: "Provincia" },
-    { id: "fedpat", label: "FedPat" },
-    { id: "sancor", label: "Sancor" },
-];
+import { COMPANIAS, getCompaniaColor, getCompaniaNombre } from "../../companiasConfig";
 
-// ⭐ Colores por compañía
-const COMPANIA_COLORS: Record<string, string> = {
-    atm: "#762C43",
-    provincia: "#274380",
-    sancor: "#C00869",
-    fedpat: "#0858A4",
-};
 
-const getCompaniaColor = (id: string) => COMPANIA_COLORS[id] ?? "#111827";
 
 const getCompaniaButtonStyle = (id: string, active: boolean): CSSProperties => {
     const color = getCompaniaColor(id);
@@ -53,6 +46,12 @@ const getCompaniaTagStyle = (id: string): CSSProperties => ({
     backgroundColor: getCompaniaColor(id),
 });
 
+const getTodayLocalISO = () => {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
 const Cotizador = () => {
     const dispatch = useDispatch();
 
@@ -60,6 +59,24 @@ const Cotizador = () => {
         dispatch(setPageTitle("Cotizador"));
     }, [dispatch]);
 
+    // -----------------------------
+    // Helpers UI
+    // -----------------------------
+    const showToast = (msg = "", type: SweetAlertIcon = "success") => {
+        Swal.fire({
+            icon: type,
+            title: msg,
+            toast: true,
+            position: "top",
+            showConfirmButton: false,
+            timer: 2500,
+            padding: "10px 20px",
+        });
+    };
+
+    // -----------------------------
+    // Estado del formulario
+    // -----------------------------
     const [form, setForm] = useState({
         anio: "2018",
         codpostal: "1704",
@@ -87,64 +104,119 @@ const Cotizador = () => {
     // RTK Query hooks
     const { data: brands = [], isLoading: loadingBrands } = useGetBrandsQuery();
     const { data: states = [], isLoading: loadingStates } = useGetStatesQuery();
-    const { data: models = [], isLoading: loadingModels } = useGetModelsQuery(
-        form.marca || undefined
-    );
+    const { data: models = [], isLoading: loadingModels } = useGetModelsQuery(form.marca || undefined);
 
-    const [filtro, setFiltro] = useState<"todos" | "riesgo" | "terceros" | "civil" | "robo">(
-        "todos"
-    );
-
-    const [filtroCompania, setFiltroCompania] = useState<
-        "todas" | "atm" | "provincia" | "fedpat" | "sancor"
-    >("todas");
-
+    const [filtro, setFiltro] = useState<"todos" | "riesgo" | "terceros" | "civil" | "robo">("todos");
+    const [filtroCompania, setFiltroCompania] = useState<"todas" | "atm" | "provincia" | "fedpat" | "sancor">("todas");
     const [planesSeleccionados, setPlanesSeleccionados] = useState<CotizacionPlan[]>([]);
 
     // compañías seleccionadas (por defecto todas)
-    const [companiasSeleccionadas, setCompaniasSeleccionadas] = useState<string[]>(
-        COMPANIAS.map((c) => c.id)
-    );
+    const [companiasSeleccionadas, setCompaniasSeleccionadas] = useState<string[]>(COMPANIAS.map((c) => c.id));
 
     // Mutación RTK Query para /assurance/cotizar
     const [cotizarApi, { isLoading: loadingCotizar }] = useCotizarMutation();
 
+    // -----------------------------
+    // Clientes + Guardado de cotización
+    // -----------------------------
+    const { data: clientes = [], isLoading: loadingClientes } = useGetClientesQuery();
+    const [addCliente] = useAddClienteMutation();
+    const [addQuotationResult, { isLoading: loadingGuardarCotizacion }] = useAddQuotationResultMutation();
+
+    const [modalGuardarOpen, setModalGuardarOpen] = useState(false);
+    const [modoNuevoCliente, setModoNuevoCliente] = useState(false);
+    const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
+
+    const [clienteNuevo, setClienteNuevo] = useState<Cliente>({
+        id: 0,
+        name: "",
+        lastname: "",
+        email: "",
+        phone: "",
+        zipcode: "",
+        vat: "",
+        is_company: false,
+        state_id: 0,
+    });
+
+    const clientesOptions = useMemo(() => {
+        return clientes.map((c) => ({
+            value: String(c.id),
+            label: `${c.lastname} ${c.name} (${c.email})`,
+        }));
+    }, [clientes]);
+
+
+    const selectedCliente = useMemo(
+        () => (selectedClientId ? clientes.find((c) => c.id === selectedClientId) : null),
+        [selectedClientId, clientes]
+    );
+
+
+    const stylesSelectPortal = useMemo(
+        () => ({
+            menuPortal: (base: any) => ({ ...base, zIndex: 9999 }),
+        }),
+        []
+    );
+
+    // -----------------------------
+    // Normalizadores (API cotizar -> UI)
+    // -----------------------------
+    const normalizeCotizacionToPlanes = (data: any): { cotizacionNorm: Cotizacion; planesNorm: CotizacionPlan[] } => {
+        // Caso viejo: { planes: [...] }
+        if (data?.planes && Array.isArray(data.planes)) {
+            return { cotizacionNorm: data as Cotizacion, planesNorm: data.planes as CotizacionPlan[] };
+        }
+
+        // Caso nuevo: { atm:{result:[]}, provincia:{result:[...]}, ... }
+        const planesNorm: CotizacionPlan[] = [];
+        if (data && typeof data === "object") {
+            Object.entries(data).forEach(([aseguradora, block]: [string, any]) => {
+                const arr = block?.result;
+                if (!Array.isArray(arr)) return;
+
+                arr.forEach((p: any) => {
+                    planesNorm.push({
+                        aseguradora,
+                        plan: p.plan,
+                        cubre: p.cubre,
+                        cuota: Number(p.cuota),
+                        frecuencia: p.frecuencia,
+                        comision: Number(p.comision),
+                        ajuste: p.ajuste,
+                        sumaAsegurada: Number(p.suma_asegurada ?? p.sumaAsegurada ?? 0),
+                        idCotizacion: String(p.id_cotizacion ?? p.idCotizacion ?? ""),
+                    } as any);
+                });
+            });
+        }
+
+        const cotizacionNorm = { ...data, planes: planesNorm } as Cotizacion;
+        return { cotizacionNorm, planesNorm };
+    };
+
+    // -----------------------------
+    // CP -> Provincia/Localidad
+    // -----------------------------
     const buscarPorCodigoPostal = async () => {
         const codigo = form.codpostal.trim();
         if (!codigo) {
-            Swal.fire({
-                icon: "warning",
-                title: "Ingrese un código postal válido",
-                toast: true,
-                position: "top",
-                showConfirmButton: false,
-                timer: 2000,
-            });
+            showToast("Ingrese un código postal válido", "warning");
             return;
         }
 
         setLoadingCP(true);
 
-        // 🔹 Nos aseguramos de tener cargadas las provincias de tu API
         if (!states.length) {
-            Swal.fire({
-                icon: "info",
-                title: "Cargando provincias...",
-                text: "Esperá un momento y volvé a intentar.",
-                toast: true,
-                position: "top",
-                showConfirmButton: false,
-                timer: 2500,
-            });
+            showToast("Cargando provincias... Volvé a intentar en un momento.", "info");
             setLoadingCP(false);
             return;
         }
 
         try {
-            // ✅ Llamamos a la API externa
             const res = await fetch(`https://api.zippopotam.us/ar/${codigo}`);
             if (!res.ok) throw new Error("Código postal no encontrado");
-
             const data = await res.json();
 
             const place = data.places?.[0];
@@ -153,9 +225,6 @@ const Cotizador = () => {
             const localidadApi = place["place name"] || "";
             const provinciaApiNombre = place["state"] || "";
 
-            console.log("CP API →", { localidadApi, provinciaApiNombre });
-
-            // 🔍 Matcheamos el nombre de provincia de la API externa con tu /states
             const stateMatch = findStateByProvinciaNombre(provinciaApiNombre, states);
 
             if (!stateMatch) {
@@ -181,7 +250,6 @@ const Cotizador = () => {
                 return;
             }
 
-            // ✅ Caso OK
             setForm((prev) => ({
                 ...prev,
                 codpostal: codigo,
@@ -211,57 +279,47 @@ const Cotizador = () => {
         }
     };
 
+    // -----------------------------
+    // Filtros planes
+    // -----------------------------
     const planesFiltrados = planes.filter((plan) => {
-        // 1️⃣ Filtro por compañía
-        if (filtroCompania !== "todas" && plan.aseguradora !== filtroCompania) {
-            return false;
-        }
+        if (filtroCompania !== "todas" && (plan as any).aseguradora !== filtroCompania) return false;
 
-        // 2️⃣ Filtro por tipo de cobertura
-        const desc = (plan.cubre || "").toLowerCase();
-
+        const desc = ((plan as any).cubre || "").toLowerCase();
         if (filtro === "riesgo") return desc.includes("todo riesgo");
         if (filtro === "terceros") return desc.includes("terceros");
         if (filtro === "civil") return desc.includes("civil");
         if (filtro === "robo") return desc.includes("robo") || desc.includes("hurto");
-
-        return true; // "todos"
+        return true;
     });
 
+    // -----------------------------
+    // Handlers form
+    // -----------------------------
     const changeValue = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { id, value } = e.target;
         setForm({ ...form, [id]: value });
     };
 
     const toggleSeleccion = (plan: CotizacionPlan) => {
-        setPlanesSeleccionados((prev) =>
-            prev.includes(plan) ? prev.filter((p) => p !== plan) : [...prev, plan]
-        );
+        setPlanesSeleccionados((prev) => (prev.includes(plan) ? prev.filter((p) => p !== plan) : [...prev, plan]));
     };
 
-    // Toggle para las cápsulas de compañías
     const toggleCompania = (id: string) => {
-        setCompaniasSeleccionadas((prev) =>
-            prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
-        );
-    };
+        setCompaniasSeleccionadas((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
+    };    
 
-    const getCompaniaLabel = (id: string) =>
-        COMPANIAS.find((c) => c.id === id)?.label || id.toUpperCase();
-
-    // 🔹 Cotizar en la API real /assurance/cotizar
-    // 🔹 Cotizar en la API real /assurance/cotizar
+    // -----------------------------
+    // Cotizar
+    // -----------------------------
     const cotizar = async () => {
-        // Modal "Cotizando..." con loader
         Swal.fire({
             title: "Cotizando...",
             html: "Estamos consultando las aseguradoras, por favor esperá.",
             allowOutsideClick: false,
             allowEscapeKey: false,
             showConfirmButton: false,
-            didOpen: () => {
-                Swal.showLoading();
-            },
+            didOpen: () => Swal.showLoading(),
         });
 
         try {
@@ -276,14 +334,14 @@ const Cotizador = () => {
                 valordelvehiculo: form.valordelvehiculo,
             };
 
-            console.log("Payload /assurance/cotizar:", payload);
-
             const data = await cotizarApi(payload).unwrap();
 
-            setCotizacion(data);
-            setPlanes(data.planes || []);
+            const { cotizacionNorm, planesNorm } = normalizeCotizacionToPlanes(data);
 
-            // Reemplaza el modal de loading por el OK
+            setCotizacion(cotizacionNorm);
+            setPlanes(planesNorm);
+            setPlanesSeleccionados([]);
+
             Swal.fire({
                 icon: "success",
                 title: "¡Listo!",
@@ -293,29 +351,167 @@ const Cotizador = () => {
             });
         } catch (error: any) {
             console.error("Error al cotizar en la API:", error);
-
             Swal.fire({
                 icon: "error",
                 title: "Error al cotizar",
-                text:
-                    error?.data?.message ||
-                    "No se pudo obtener la cotización. Revisá la consola.",
+                text: error?.data?.message || "No se pudo obtener la cotización. Revisá la consola.",
                 confirmButtonText: "Entendido",
             });
         }
     };
 
+    // -----------------------------
+    // Guardar en cliente (modal + crear cliente + POST /quotations/result)
+    // -----------------------------
+    const openGuardarModal = () => {
+        if (!planesSeleccionados.length) return;
 
-    // Placeholder para guardar las cotizaciones
-    const guardarEnCliente = () => {
-        Swal.fire({
-            icon: "info",
-            title: "Guardar en Cliente",
-            text: "Esta función aún no está implementada.",
-            confirmButtonText: "Entendido",
-        });
+        // Pre-carga útil (CP + provincia)
+        setClienteNuevo((prev) => ({
+            ...prev,
+            id: 0,
+            zipcode: form.codpostal?.trim() || "",
+            state_id: Number(form.provincia || 0),
+        }));
+
+        setSelectedClientId(null);
+        setModoNuevoCliente(false);
+        setModalGuardarOpen(true);
     };
 
+    const closeGuardarModal = () => setModalGuardarOpen(false);
+
+    const changeNuevoClienteValue = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { id, value, type, checked } = e.target;
+        setClienteNuevo((prev) => ({
+            ...prev,
+            [id]: type === "checkbox" ? checked : value,
+        }));
+    };
+
+    const crearClienteDesdeModal = async () => {
+        if (!clienteNuevo.name || !clienteNuevo.lastname || !clienteNuevo.email || !clienteNuevo.phone) {
+            showToast("Completá Nombre, Apellido, Email y Teléfono.", "error");
+            return;
+        }
+
+        try {
+            Swal.fire({
+                title: "Creando cliente...",
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                didOpen: () => Swal.showLoading(),
+            });
+
+            const created = await addCliente(clienteNuevo).unwrap();
+
+            Swal.close();
+            showToast("Cliente creado correctamente.", "success");
+
+            setSelectedClientId(created.id);
+            setModoNuevoCliente(false);
+        } catch (err: any) {
+            Swal.close();
+            Swal.fire({
+                icon: "error",
+                title: "Error creando cliente",
+                text: err?.data?.message || "No se pudo crear el cliente.",
+                confirmButtonText: "Entendido",
+            });
+        }
+    };
+
+    const mapPlanToApi = (p: CotizacionPlan) => {
+        const anyP = p as any;
+        return {
+            ajuste: anyP.ajuste ?? "sin ajuste",
+            comision: Number(anyP.comision ?? 0),
+            cubre: String(anyP.cubre ?? ""),
+            cuota: Number(anyP.cuota ?? 0),
+            frecuencia: String(anyP.frecuencia ?? ""),
+            id_cotizacion: String(anyP.idCotizacion ?? anyP.id_cotizacion ?? ""),
+            plan: String(anyP.plan ?? ""),
+            suma_asegurada: Number(anyP.sumaAsegurada ?? anyP.suma_asegurada ?? 0),
+        };
+    };
+
+    const buildAseguradorasPayload = () => {
+        const grouped = planesSeleccionados.reduce((acc, p) => {
+            const aseguradora = String((p as any).aseguradora || "");
+            if (!aseguradora) return acc;
+            if (!acc[aseguradora]) acc[aseguradora] = [];
+            acc[aseguradora].push(mapPlanToApi(p));
+            return acc;
+        }, {} as Record<string, ReturnType<typeof mapPlanToApi>[]>);
+
+        return Object.entries(grouped).map(([key, plans]) => ({ [key]: plans }));
+    };
+
+    const guardarCotizacionSeleccionada = async () => {
+        if (!planesSeleccionados.length) return;
+
+        if (!selectedClientId) {
+            showToast("Seleccioná un cliente o creá uno nuevo.", "warning");
+            return;
+        }
+
+        if (!form.marca || !form.modelo || !form.anio) {
+            showToast("Revisá Marca / Modelo / Año antes de guardar.", "warning");
+            return;
+        }
+
+        const payload = {
+            anio: Number(form.anio),
+            aseguradora: buildAseguradorasPayload(),
+            brand_id: Number(form.marca),
+            client_id: Number(selectedClientId),
+            codigo_postal: form.codpostal?.trim() || "",
+            es0km: form.es0km === "S",
+            fecha: getTodayLocalISO(),
+            model_id: Number(form.modelo),
+            valor_vehiculo: Number(form.valordelvehiculo),
+        };
+
+        try {
+            Swal.fire({
+                title: "Guardando cotización...",
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                didOpen: () => Swal.showLoading(),
+            });
+
+            await addQuotationResult(payload as any).unwrap();
+
+            Swal.close();
+            Swal.fire({
+                icon: "success",
+                title: "Cotización guardada",
+                text: "Se guardó dentro del cliente correctamente.",
+                showConfirmButton: false,
+                timer: 1800,
+            });
+
+            closeGuardarModal();
+            setPlanesSeleccionados([]);
+        } catch (err: any) {
+            Swal.close();
+            Swal.fire({
+                icon: "error",
+                title: "Error al guardar",
+                text: err?.data?.message || "No se pudo guardar la cotización.",
+                confirmButtonText: "Entendido",
+            });
+        }
+    };
+
+    const guardarEnCliente = () => {
+        openGuardarModal();
+    };
+
+    // -----------------------------
+    // Render
+    // -----------------------------
     return (
         <>
             <div className="panel max-w-5xl mx-auto p-6 border-white-light dark:border-[#1b2e4b]">
@@ -344,24 +540,13 @@ const Cotizador = () => {
                                 title="Buscar por código postal"
                                 disabled={loadingCP}
                             >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="w-5 h-5"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                    strokeWidth={2}
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z"
-                                    />
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z" />
                                 </svg>
                             </button>
                         </div>
                     </div>
-                    <div className="hidden sm:block"></div>
+                    <div className="hidden sm:block" />
 
                     {/* Provincia (API / con IDs) */}
                     <div>
@@ -371,10 +556,7 @@ const Cotizador = () => {
                         <Select
                             id="provincia"
                             placeholder={loadingStates ? "Cargando provincias..." : "Seleccione una provincia"}
-                            options={states.map((s) => ({
-                                value: s.id.toString(),
-                                label: s.name,
-                            }))}
+                            options={states.map((s) => ({ value: s.id.toString(), label: s.name }))}
                             value={
                                 form.provincia
                                     ? {
@@ -387,10 +569,7 @@ const Cotizador = () => {
                                 const provinciaId = selected?.value || "";
                                 const apiName = selected?.label || "";
 
-                                setForm((prev) => ({
-                                    ...prev,
-                                    provincia: provinciaId,
-                                }));
+                                setForm((prev) => ({ ...prev, provincia: provinciaId }));
 
                                 if (!apiName) {
                                     setSelectedProvinciaNombre("");
@@ -425,12 +604,7 @@ const Cotizador = () => {
                             placeholder={localidades.length ? "Seleccione una localidad" : "Seleccione provincia primero"}
                             options={localidades.map((l) => ({ value: l, label: l }))}
                             value={form.localidad ? { value: form.localidad, label: form.localidad } : null}
-                            onChange={(selected) =>
-                                setForm((prev) => ({
-                                    ...prev,
-                                    localidad: selected?.value || "",
-                                }))
-                            }
+                            onChange={(selected) => setForm((prev) => ({ ...prev, localidad: selected?.value || "" }))}
                             isDisabled={!selectedProvinciaNombre}
                             className="react-select-container"
                             classNamePrefix="react-select"
@@ -445,10 +619,7 @@ const Cotizador = () => {
                         <Select
                             id="marca"
                             placeholder={loadingBrands ? "Cargando marcas..." : "Seleccione una marca"}
-                            options={brands.map((b) => ({
-                                value: b.id.toString(),
-                                label: b.name,
-                            }))}
+                            options={brands.map((b) => ({ value: b.id.toString(), label: b.name }))}
                             value={
                                 form.marca
                                     ? {
@@ -477,10 +648,7 @@ const Cotizador = () => {
                         <Select
                             id="modelo"
                             placeholder={loadingModels ? "Cargando modelos..." : "Seleccione un modelo"}
-                            options={models.map((m) => ({
-                                value: m.id.toString(),
-                                label: m.name,
-                            }))}
+                            options={models.map((m) => ({ value: m.id.toString(), label: m.name }))}
                             value={
                                 form.modelo
                                     ? {
@@ -519,7 +687,7 @@ const Cotizador = () => {
                                 }
                                 className="custom_switch absolute w-full h-full opacity-0 z-10 cursor-pointer peer"
                             />
-                            <span className="bg-[#ebedf2] dark:bg-dark block h-full rounded-full before:absolute before:left-1 before:bg-white dark:before:bg-white-dark dark:peer-checked:before:bg-white before:bottom-1 before:w-4 before:h-4 before:rounded-full peer-checked:before:left-7 peer-checked:bg-primary before:transition-all before:duration-300"></span>
+                            <span className="bg-[#ebedf2] dark:bg-dark block h-full rounded-full before:absolute before:left-1 before:bg-white dark:before:bg-white-dark dark:peer-checked:before:bg-white before:bottom-1 before:w-4 before:h-4 before:rounded-full peer-checked:before:left-7 peer-checked:bg-primary before:transition-all before:duration-300" />
                         </label>
                     </div>
 
@@ -528,13 +696,7 @@ const Cotizador = () => {
                         <label htmlFor="valordelvehiculo" className="font-semibold whitespace-nowrap">
                             Valor del Vehículo
                         </label>
-                        <input
-                            id="valordelvehiculo"
-                            type="number"
-                            className="form-input"
-                            value={form.valordelvehiculo}
-                            onChange={changeValue}
-                        />
+                        <input id="valordelvehiculo" type="number" className="form-input" value={form.valordelvehiculo} onChange={changeValue} />
                     </div>
 
                     {/* Año */}
@@ -557,10 +719,10 @@ const Cotizador = () => {
                                         type="button"
                                         onClick={() => toggleCompania(c.id)}
                                         style={getCompaniaButtonStyle(c.id, isActive)}
-                                        className={`px-4 py-1.5 rounded-full text-sm font-medium border transition hover:opacity-90
-                                            ${isActive ? "shadow-sm" : "bg-white dark:bg-[#1b2e4b] hover:bg-primary/10"}`}
+                                        className={`px-4 py-1.5 rounded-full text-sm font-medium border transition hover:opacity-90 ${isActive ? "shadow-sm" : "bg-white dark:bg-[#1b2e4b] hover:bg-primary/10"
+                                            }`}
                                     >
-                                        {c.label}
+                                        {c.nombre}
                                     </button>
                                 );
                             })}
@@ -569,12 +731,7 @@ const Cotizador = () => {
 
                     {/* Botón Cotizar */}
                     <div className="sm:col-span-2 flex justify-end gap-3 mt-4">
-                        <button
-                            type="button"
-                            className="btn btn-primary flex items-center gap-2 disabled:opacity-60"
-                            onClick={cotizar}
-                            disabled={loadingCotizar}
-                        >
+                        <button type="button" className="btn btn-primary flex items-center gap-2 disabled:opacity-60" onClick={cotizar} disabled={loadingCotizar}>
                             <IconSend />
                             {loadingCotizar ? "Cotizando..." : "Cotizar"}
                         </button>
@@ -603,8 +760,8 @@ const Cotizador = () => {
                                         key={opt.value}
                                         onClick={() => setFiltro(opt.value as typeof filtro)}
                                         className={`px-4 py-2 rounded-full border font-medium transition ${filtro === opt.value
-                                                ? "bg-primary text-white border-primary"
-                                                : "bg-white dark:bg-[#1b2e4b] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-700 hover:bg-primary/10"
+                                            ? "bg-primary text-white border-primary"
+                                            : "bg-white dark:bg-[#1b2e4b] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-700 hover:bg-primary/10"
                                             }`}
                                     >
                                         {opt.label}
@@ -614,23 +771,19 @@ const Cotizador = () => {
 
                             {/* Filtros por compañía */}
                             <div className="mt-4 flex flex-col items-center gap-2">
-                                <span className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                                    Filtrar por compañía
-                                </span>
+                                <span className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Filtrar por compañía</span>
                                 <div className="flex flex-wrap justify-center gap-2">
-                                    {/* Botón "Todas" */}
                                     <button
                                         type="button"
                                         onClick={() => setFiltroCompania("todas")}
                                         className={`px-3 py-1.5 rounded-full text-xs sm:text-sm border font-medium transition ${filtroCompania === "todas"
-                                                ? "bg-primary text-white border-primary"
-                                                : "bg-white dark:bg-[#1b2e4b] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-700 hover:bg-primary/10"
+                                            ? "bg-primary text-white border-primary"
+                                            : "bg-white dark:bg-[#1b2e4b] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-700 hover:bg-primary/10"
                                             }`}
                                     >
                                         Todas
                                     </button>
 
-                                    {/* Botones por compañía (con color) */}
                                     {COMPANIAS.map((c) => {
                                         const isActive = filtroCompania === c.id;
                                         return (
@@ -642,7 +795,7 @@ const Cotizador = () => {
                                                 className={`px-3 py-1.5 rounded-full text-xs sm:text-sm border font-medium transition hover:opacity-90 ${isActive ? "" : "bg-white dark:bg-[#1b2e4b] hover:bg-primary/10"
                                                     }`}
                                             >
-                                                {c.label}
+                                                {c.nombre}
                                             </button>
                                         );
                                     })}
@@ -653,48 +806,38 @@ const Cotizador = () => {
                         {/* GRID de planes */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 w-full px-6">
                             {planesFiltrados.map((plan, index) => {
-                                const desc = (plan.cubre || "").toLowerCase();
+                                const anyPlan = plan as any;
+
+                                const desc = (anyPlan.cubre || "").toLowerCase();
                                 let color = "from-gray-400 to-gray-500";
 
-                                if (desc.includes("todo riesgo")) {
-                                    color = "from-purple-600 to-pink-500";
-                                } else if (desc.includes("terceros")) {
-                                    color = "from-emerald-500 to-teal-400";
-                                } else if (desc.includes("civil")) {
-                                    color = "from-orange-400 to-yellow-500";
-                                } else if (desc.includes("robo") || desc.includes("hurto")) {
-                                    color = "from-blue-600 to-cyan-400";
-                                } else {
-                                    color = "from-indigo-500 to-blue-500";
-                                }
+                                if (desc.includes("todo riesgo")) color = "from-purple-600 to-pink-500";
+                                else if (desc.includes("terceros")) color = "from-emerald-500 to-teal-400";
+                                else if (desc.includes("civil")) color = "from-orange-400 to-yellow-500";
+                                else if (desc.includes("robo") || desc.includes("hurto")) color = "from-blue-600 to-cyan-400";
+                                else color = "from-indigo-500 to-blue-500";
 
                                 return (
                                     <div
-                                        id={`card-${plan.aseguradora}-${plan.plan}-${plan.idCotizacion}-${index}`}
-                                        key={`${plan.aseguradora}-${plan.plan}-${plan.idCotizacion}-${index}`}
+                                        id={`card-${anyPlan.aseguradora}-${anyPlan.plan}-${anyPlan.idCotizacion}-${index}`}
+                                        key={`${anyPlan.aseguradora}-${anyPlan.plan}-${anyPlan.idCotizacion}-${index}`}
                                         className="flex flex-col justify-between relative bg-white dark:bg-[#0d1727] rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700 transition hover:shadow-2xl hover:-translate-y-1 duration-300"
                                     >
                                         {/* Header */}
                                         <div className={`bg-gradient-to-r ${color} text-white text-center py-6`}>
                                             <div className="flex justify-between items-center px-4 text-xs opacity-80">
-                                                <span>#{plan.idCotizacion}</span>
+                                                <span>#{anyPlan.idCotizacion}</span>
 
-                                                {/* TAG compañía con color por aseguradora */}
-                                                <span
-                                                    style={getCompaniaTagStyle(plan.aseguradora)}
-                                                    className="px-2 py-0.5 rounded-full text-[11px] uppercase tracking-wide text-white"
-                                                >
-                                                    {getCompaniaLabel(plan.aseguradora)}
+                                                <span style={getCompaniaTagStyle(anyPlan.aseguradora)} className="px-2 py-0.5 rounded-full text-[11px] uppercase tracking-wide text-white">
+                                                    {getCompaniaNombre(anyPlan.aseguradora)}
                                                 </span>
                                             </div>
 
-                                            <h3 className="text-lg font-bold mt-2 uppercase tracking-wide px-4">
-                                                {plan.plan}
-                                            </h3>
-                                            <p className="text-xs mt-1 opacity-90 px-4">{plan.cubre}</p>
+                                            <h3 className="text-lg font-bold mt-2 uppercase tracking-wide px-4">{anyPlan.plan}</h3>
+                                            <p className="text-xs mt-1 opacity-90 px-4">{anyPlan.cubre}</p>
                                             <p className="text-xl font-semibold mt-3">
-                                                ${formatNumber(plan.cuota)}
-                                                <span className="text-sm opacity-80 ml-1">/{plan.frecuencia}</span>
+                                                ${formatNumber(anyPlan.cuota)}
+                                                <span className="text-sm opacity-80 ml-1">/{anyPlan.frecuencia}</span>
                                             </p>
                                         </div>
 
@@ -703,25 +846,24 @@ const Cotizador = () => {
                                             <ul className="text-gray-700 dark:text-gray-300 text-sm space-y-2 mb-5">
                                                 <li>
                                                     🏢 <strong>Compañía:</strong>{" "}
-                                                    <span className="font-semibold">{getCompaniaLabel(plan.aseguradora)}</span>
+                                                    <span className="font-semibold">{getCompaniaNombre(anyPlan.aseguradora)}</span>
                                                 </li>
                                                 <li>
                                                     ✅ <strong>Cuota:</strong>{" "}
-                                                    <span className="font-semibold text-primary">${formatNumber(plan.cuota)}</span>
+                                                    <span className="font-semibold text-primary">${formatNumber(anyPlan.cuota)}</span>
                                                 </li>
                                                 <li>
                                                     🛡️ <strong>Suma asegurada:</strong>{" "}
-                                                    <span className="font-semibold">${formatNumber(plan.sumaAsegurada)}</span>
+                                                    <span className="font-semibold">${formatNumber(anyPlan.sumaAsegurada)}</span>
                                                 </li>
-                                                {plan.ajuste && (
+                                                {anyPlan.ajuste && (
                                                     <li>
-                                                        ⚙️ <strong>Ajuste:</strong>{" "}
-                                                        <span className="font-semibold">{plan.ajuste}</span>
+                                                        ⚙️ <strong>Ajuste:</strong> <span className="font-semibold">{anyPlan.ajuste}</span>
                                                     </li>
                                                 )}
                                                 <li data-hide-on-share="true">
                                                     💰 <strong>Comisión:</strong>{" "}
-                                                    <span className="font-semibold">${formatNumber(plan.comision)}</span>
+                                                    <span className="font-semibold">${formatNumber(anyPlan.comision)}</span>
                                                 </li>
                                             </ul>
                                         </div>
@@ -731,9 +873,7 @@ const Cotizador = () => {
                                             <button
                                                 type="button"
                                                 onClick={() => toggleSeleccion(plan)}
-                                                className={`w-full py-2 rounded-lg font-semibold transition ${planesSeleccionados.includes(plan)
-                                                        ? "bg-[#153272] text-white"
-                                                        : "bg-primary text-white hover:bg-primary/80"
+                                                className={`w-full py-2 rounded-lg font-semibold transition ${planesSeleccionados.includes(plan) ? "bg-[#153272] text-white" : "bg-primary text-white hover:bg-primary/80"
                                                     }`}
                                             >
                                                 {planesSeleccionados.includes(plan) ? (
@@ -750,7 +890,7 @@ const Cotizador = () => {
                                                 type="button"
                                                 onClick={() =>
                                                     compartirPorWhatsApp(
-                                                        `card-${plan.aseguradora}-${plan.plan}-${plan.idCotizacion}-${index}`,
+                                                        `card-${anyPlan.aseguradora}-${anyPlan.plan}-${anyPlan.idCotizacion}-${index}`,
                                                         plan,
                                                         null,
                                                         cotizacion
@@ -769,7 +909,7 @@ const Cotizador = () => {
 
                         {/* Botones de acción global */}
                         {planesSeleccionados.length > 0 && (
-                            <div className="flex flex-col sm:flex-row justify-center gap-4 mt-10">
+                            <div className="flex flex-col sm:flex-row justify-center gap-4 mt-10 px-6">
                                 <button
                                     type="button"
                                     className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold px-6 py-3 rounded-lg transition w-full sm:w-auto"
@@ -791,6 +931,186 @@ const Cotizador = () => {
                     </div>
                 )}
             </div>
+
+            {/* ---------------- MODAL Guardar en Cliente ---------------- */}
+            <Transition appear show={modalGuardarOpen} as={Fragment}>
+                <Dialog as="div" open={modalGuardarOpen} onClose={closeGuardarModal} className="relative z-[51]">
+                    <TransitionChild as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0">
+                        <div className="fixed inset-0 bg-[black]/60" />
+                    </TransitionChild>
+
+                    <div className="fixed inset-0 overflow-y-auto">
+                        <div className="flex min-h-full items-center justify-center px-4 py-8">
+                            <TransitionChild
+                                as={Fragment}
+                                enter="ease-out duration-300"
+                                enterFrom="opacity-0 scale-95"
+                                enterTo="opacity-100 scale-100"
+                                leave="ease-in duration-200"
+                                leaveFrom="opacity-100 scale-100"
+                                leaveTo="opacity-0 scale-95"
+                            >
+                                <DialogPanel className="panel border-0 p-0 rounded-lg overflow-hidden w-full max-w-xl text-black dark:text-white-dark relative">
+                                    <button
+                                        type="button"
+                                        onClick={closeGuardarModal}
+                                        className="absolute top-4 ltr:right-4 rtl:left-4 text-gray-400 hover:text-gray-800 dark:hover:text-gray-600 outline-none"
+                                    >
+                                        <IconX />
+                                    </button>
+
+                                    <div className="text-lg font-medium bg-[#fbfbfb] dark:bg-[#121c2c] ltr:pl-5 rtl:pr-5 py-3">
+                                        Guardar cotización en cliente
+                                    </div>
+
+                                    <div className="p-5 space-y-4">
+                                        <div className="bg-[#f7f7f7] dark:bg-[#0d1727] rounded-lg p-3 text-sm">
+                                            <div>
+                                                <strong>Planes seleccionados:</strong> {planesSeleccionados.length}
+                                            </div>
+                                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                Se guardarán agrupados por aseguradora.
+                                            </div>
+                                        </div>
+
+                                        {/* Selector de cliente */}
+                                        <div>
+                                            <label className="font-semibold mb-2 block">Cliente</label>
+                                            <Select
+                                                placeholder={loadingClientes ? "Cargando clientes..." : "Seleccioná un cliente"}
+                                                options={clientesOptions}
+                                                value={
+                                                    selectedCliente
+                                                        ? {
+                                                            value: String(selectedCliente.id),
+                                                            label: `${selectedCliente.lastname} ${selectedCliente.name} (${selectedCliente.email})`,
+                                                        }
+                                                        : null
+                                                }
+
+                                                onChange={(opt) => {
+                                                    const v = opt?.value;
+                                                    if (!v) return;
+
+                                                    if (v === "__new__") {
+                                                        setModoNuevoCliente(true);
+                                                        setSelectedClientId(null);
+                                                        return;
+                                                    }
+
+                                                    setModoNuevoCliente(false);
+                                                    setSelectedClientId(Number(v));
+                                                }}
+                                                menuPortalTarget={typeof document !== "undefined" ? document.body : undefined}
+                                                styles={stylesSelectPortal as any}
+                                                className="react-select-container"
+                                                classNamePrefix="react-select"
+                                                isLoading={loadingClientes}
+                                            />
+
+                                            {!modoNuevoCliente && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setModoNuevoCliente(true);
+                                                        setSelectedClientId(null);
+                                                    }}
+                                                    className="mt-2 text-sm text-primary hover:underline inline-flex items-center gap-2"
+                                                >
+                                                    <IconPlus />
+                                                    Crear nuevo cliente
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {/* Form nuevo cliente */}
+                                        {modoNuevoCliente && (
+                                            <div className="border border-white-light dark:border-[#1b2e4b] rounded-lg p-4 space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <h3 className="font-bold">Nuevo cliente</h3>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setModoNuevoCliente(false)}
+                                                        className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                                                    >
+                                                        Cancelar creación
+                                                    </button>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                    <div>
+                                                        <label htmlFor="name" className="text-sm">
+                                                            Nombre
+                                                        </label>
+                                                        <input id="name" className="form-input" value={clienteNuevo.name} onChange={changeNuevoClienteValue} />
+                                                    </div>
+                                                    <div>
+                                                        <label htmlFor="lastname" className="text-sm">
+                                                            Apellido
+                                                        </label>
+                                                        <input id="lastname" className="form-input" value={clienteNuevo.lastname} onChange={changeNuevoClienteValue} />
+                                                    </div>
+                                                    <div>
+                                                        <label htmlFor="email" className="text-sm">
+                                                            Email
+                                                        </label>
+                                                        <input id="email" type="email" className="form-input" value={clienteNuevo.email} onChange={changeNuevoClienteValue} />
+                                                    </div>
+                                                    <div>
+                                                        <label htmlFor="phone" className="text-sm">
+                                                            Teléfono
+                                                        </label>
+                                                        <input id="phone" className="form-input" value={clienteNuevo.phone} onChange={changeNuevoClienteValue} />
+                                                    </div>
+                                                    <div>
+                                                        <label htmlFor="zipcode" className="text-sm">
+                                                            Código Postal
+                                                        </label>
+                                                        <input id="zipcode" className="form-input" value={clienteNuevo.zipcode} onChange={changeNuevoClienteValue} />
+                                                    </div>
+
+                                                    <div className="flex items-center gap-3 sm:col-span-2">
+                                                        <input
+                                                            id="is_company"
+                                                            type="checkbox"
+                                                            checked={!!clienteNuevo.is_company}
+                                                            onChange={changeNuevoClienteValue}
+                                                        />
+                                                        <label htmlFor="is_company" className="text-sm">
+                                                            Es empresa
+                                                        </label>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex justify-end">
+                                                    <button type="button" className="btn btn-primary" onClick={crearClienteDesdeModal}>
+                                                        Crear cliente
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Acciones */}
+                                        <div className="flex justify-end items-center gap-3 pt-2">
+                                            <button type="button" className="btn btn-outline-danger" onClick={closeGuardarModal}>
+                                                Cancelar
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="btn btn-primary"
+                                                onClick={guardarCotizacionSeleccionada}
+                                                disabled={loadingGuardarCotizacion}
+                                            >
+                                                {loadingGuardarCotizacion ? "Guardando..." : "Guardar cotización"}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </DialogPanel>
+                            </TransitionChild>
+                        </div>
+                    </div>
+                </Dialog>
+            </Transition>
         </>
     );
 };

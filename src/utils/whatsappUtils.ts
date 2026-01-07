@@ -3,9 +3,13 @@ import html2canvas from "html2canvas";
 import { formatNumber } from "./formatNumber";
 import type { Cotizacion, CotizacionPlan } from "../types/Cotizacion";
 
+// --------------------------------------------------
+// Helpers
+// --------------------------------------------------
+
 // Mapeo simple de id de aseguradora → etiqueta visible
 const getCompaniaLabel = (id: string): string => {
-    switch (id.toLowerCase()) {
+    switch ((id || "").toLowerCase()) {
         case "atm":
             return "ATM";
         case "provincia":
@@ -15,9 +19,149 @@ const getCompaniaLabel = (id: string): string => {
         case "sancor":
             return "Sancor";
         default:
-            return id.toUpperCase();
+            return (id || "").toUpperCase();
     }
 };
+
+const isMobile = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+/**
+ * Normaliza teléfonos para WhatsApp (Argentina).
+ * Devuelve: 54911xxxxxxxx (sin +).
+ * Soporta: +54 9..., 54..., 011..., 11..., con/ sin "15", etc.
+ */
+export const normalizeWhatsappPhoneAR = (rawPhone: string): string | null => {
+    const raw = (rawPhone || "").trim();
+    if (!raw) return null;
+
+    let digits = raw.replace(/\D/g, "");
+    if (!digits) return null;
+
+    // Quitar prefijos típicos
+    if (digits.startsWith("00")) digits = digits.slice(2);
+    if (digits.startsWith("0")) digits = digits.slice(1);
+
+    // Si viene con 54 (Argentina), asegurar 9 móvil
+    if (digits.startsWith("54")) {
+        if (digits.startsWith("549")) return digits;
+        return `549${digits.slice(2)}`;
+    }
+
+    // Remover "15" (formato viejo) si aparece luego del código de área (2-4 dígitos)
+    const tryRemove15 = (d: string) => {
+        for (const areaLen of [2, 3, 4]) {
+            if (d.length > areaLen + 2 && d.slice(areaLen, areaLen + 2) === "15") {
+                const candidate = d.slice(0, areaLen) + d.slice(areaLen + 2);
+                if (candidate.length >= 10 && candidate.length <= 11) return candidate;
+            }
+        }
+        return d;
+    };
+
+    digits = tryRemove15(digits);
+
+    // Validación mínima
+    if (digits.length < 10) return null;
+
+    // Asumimos AR móvil
+    return `549${digits}`;
+};
+
+const openWhatsAppText = (telefono549: string, mensaje: string) => {
+    const url = isMobile()
+        ? `https://wa.me/${telefono549}?text=${encodeURIComponent(mensaje)}`
+        : `https://web.whatsapp.com/send?phone=${telefono549}&text=${encodeURIComponent(mensaje)}`;
+
+    window.open(url, "_blank");
+};
+
+type BuildMensajeOpts = {
+    aseguradoraId?: string;          // por si el plan NO trae .aseguradora (caso CotizacionGuardada)
+    extraTopLines?: string[];        // líneas extra arriba (ej: cliente, vehículo, fecha)
+};
+
+export const buildMensajeCotizacionTexto = (
+    plan: Partial<CotizacionPlan> & Record<string, any>,
+    cotizacion: Cotizacion | null,
+    opts?: BuildMensajeOpts
+) => {
+    const aseguradoraId = (opts?.aseguradoraId || plan.aseguradora || "").toString();
+    const compania = getCompaniaLabel(aseguradoraId);
+
+    // metadata por aseguradora (si existe)
+    const rawAseguradora = aseguradoraId ? cotizacion?.raw?.[aseguradoraId] : undefined;
+
+    const fechaCotizacion =
+        rawAseguradora?.fechaCotizacion || rawAseguradora?.fecha_cotizacion || "";
+
+    const numeroCotizacion =
+        rawAseguradora?.numeroCotizacion ||
+        rawAseguradora?.id_cotizacion ||
+        plan.idCotizacion ||
+        "";
+
+    const header: string[] = [
+        `🚗 *Cotización ${compania}*`,
+        "------------------------------------",
+    ];
+
+    const extra = (opts?.extraTopLines || []).filter(Boolean);
+    if (extra.length) {
+        header.push(...extra);
+        header.push("------------------------------------");
+    }
+
+    const lineas: string[] = [
+        ...header,
+        `🏢 *Compañia:* ${aseguradoraId ? aseguradoraId.toUpperCase() : "-"}`,
+        `💡 *Plan:* ${plan.plan ?? "-"}`,
+        `🛡️ *Cobertura:* ${plan.cubre ?? "-"}`,
+        `💰 *Cuota${plan.frecuencia ? ` (${plan.frecuencia})` : ""}:* $${formatNumber(plan.cuota ?? 0)}`,
+        `🛡️ *Suma asegurada:* $${formatNumber(plan.sumaAsegurada ?? 0)}`,
+    ];
+
+    if (plan.ajuste) lineas.push(`⚙️ *Ajuste:* ${plan.ajuste}`);
+    if (fechaCotizacion) lineas.push(`📅 *Fecha:* ${fechaCotizacion}`);
+    if (numeroCotizacion) lineas.push(`🔢 *Nº Cotización:* ${numeroCotizacion}`);
+
+    return lineas.join("\n");
+};
+
+// --------------------------------------------------
+// NUEVO: ClienteCotizaciones (solo texto, teléfono ya cargado)
+// --------------------------------------------------
+
+type CompartirTextoClienteArgs = {
+    telefonoCliente: string | null | undefined;
+    aseguradoraId: string; // key del objeto aseguradoras (atm/provincia/etc)
+    plan: Record<string, any>; // el plan del modal (no necesariamente CotizacionPlan)
+    cotizacion?: Cotizacion | null;  // por si tenés raw (si no, pasar null)
+    extraTopLines?: string[];        // ej: cliente, vehículo, fecha, etc
+};
+
+export const compartirCotizacionTextoClientePorWhatsApp = (args: CompartirTextoClienteArgs) => {
+    const telefono = normalizeWhatsappPhoneAR(args.telefonoCliente || "");
+
+    if (!telefono) {
+        Swal.fire({
+            icon: "error",
+            title: "Teléfono inválido",
+            text: "El cliente no tiene un celular válido cargado. Editá el cliente y cargá su WhatsApp.",
+        });
+        return;
+    }
+
+    const mensaje = buildMensajeCotizacionTexto(args.plan, args.cotizacion ?? null, {
+        aseguradoraId: args.aseguradoraId,
+        extraTopLines: args.extraTopLines,
+    });
+
+    openWhatsAppText(telefono, mensaje);
+};
+
+// --------------------------------------------------
+// ORIGINAL: Cotizador (modal + texto/imagen) - se mantiene
+// --------------------------------------------------
 
 export const compartirPorWhatsApp = async (
     id: string,
@@ -48,75 +192,32 @@ export const compartirPorWhatsApp = async (
             const btnTexto = document.getElementById("btnTexto");
             const btnImagen = document.getElementById("btnImagen");
 
-            const close = (value: any) =>
+            const close = (value: any) => Swal.close({ isConfirmed: true, value });
 
-                Swal.close({ isConfirmed: true, value });
-
-            btnTexto?.addEventListener("click", () =>
-                close({ tipo: "texto", numero: input?.value.trim() || "" })
-            );
-            btnImagen?.addEventListener("click", () =>
-                close({ tipo: "imagen", numero: input?.value.trim() || "" })
-            );
+            btnTexto?.addEventListener("click", () => close({ tipo: "texto", numero: input?.value.trim() || "" }));
+            btnImagen?.addEventListener("click", () => close({ tipo: "imagen", numero: input?.value.trim() || "" }));
         },
     });
 
     if (!isConfirmed || !formValues?.numero) return;
 
-    const numero = String(formValues.numero).replace(/\D/g, ""); // solo números
     const tipo = formValues.tipo;
-    const telefono = `549${numero}`;
+    const telefono = normalizeWhatsappPhoneAR(String(formValues.numero)) ?? null;
 
-    // 2️⃣ Armar mensaje base usando el NUEVO modelo de plan
-    const compania = getCompaniaLabel(plan.aseguradora);
-
-    // Intentamos sacar metadata específica de esa aseguradora, si existe
-    const rawAseguradora = cotizacion?.raw?.[plan.aseguradora];
-    const fechaCotizacion =
-        rawAseguradora?.fechaCotizacion || rawAseguradora?.fecha_cotizacion || "";
-    const numeroCotizacion =
-        rawAseguradora?.numeroCotizacion ||
-        rawAseguradora?.id_cotizacion ||
-        plan.idCotizacion ||
-        "";
-
-    const lineas: string[] = [
-        `🚗 *Cotización ${compania}*`,
-        "------------------------------------",
-        `🏢 *Compañia:* ${plan.aseguradora.toUpperCase()}`,
-        `💡 *Plan:* ${plan.plan}`,
-        `🛡️ *Cobertura:* ${plan.cubre}`,
-        `💰 *Cuota${plan.frecuencia ? ` (${plan.frecuencia})` : ""}:* $${formatNumber(
-            plan.cuota
-        )}`,        
-        `🛡️ *Suma asegurada:* $${formatNumber(plan.sumaAsegurada)}`,
-    ];
-
-    if (plan.ajuste) {
-        lineas.push(`⚙️ *Ajuste:* ${plan.ajuste}`);
-    }
-
-    if (fechaCotizacion) {
-        lineas.push(`📅 *Fecha:* ${fechaCotizacion}`);
-    }
-
-    if (numeroCotizacion) {
-        lineas.push(`🔢 *Nº Cotización:* ${numeroCotizacion}`);
-    }
-
-    const mensaje = lineas.join("\n");
-
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-    // 3️⃣ Si elige o
-    if (tipo === "texto") {
-        const baseUrl = isMobile ? "https://wa.me" : "https://web.whatsapp.com/send";
-        const url = `${baseUrl}?phone=${telefono}&text=${encodeURIComponent(mensaje)}`;
-        window.open(url, "_blank");
+    if (!telefono) {
+        Swal.fire("Error", "Número inválido. Verificá el celular ingresado.", "error");
         return;
     }
 
-    // 4️⃣ Si elige compartir como imagen (screenshot de la card)
+    const mensaje = buildMensajeCotizacionTexto(plan, cotizacion, { aseguradoraId: plan.aseguradora });
+
+    // 3️⃣ Si elige texto
+    if (tipo === "texto") {
+        openWhatsAppText(telefono, mensaje);
+        return;
+    }
+
+    // 4️⃣ Si elige imagen (screenshot de la card)
     const card = document.getElementById(id);
     if (!card) {
         Swal.fire("Error", "No se encontró la tarjeta a compartir.", "error");
@@ -124,14 +225,11 @@ export const compartirPorWhatsApp = async (
     }
 
     // 🔹 Ocultamos temporalmente los bloques marcados con data-hide-on-share="true"
-    const elementsToHide = Array.from(
-        card.querySelectorAll<HTMLElement>('[data-hide-on-share="true"]')
-    );
+    const elementsToHide = Array.from(card.querySelectorAll<HTMLElement>('[data-hide-on-share="true"]'));
     const previousVisibility = elementsToHide.map((el) => el.style.visibility);
 
-    elementsToHide.forEach((el) => {
-        el.style.visibility = "hidden";
-    });
+    elementsToHide.forEach((el) => (el.style.visibility = "hidden"));
+
     try {
         const canvas = await html2canvas(card, {
             backgroundColor: null,
@@ -139,19 +237,20 @@ export const compartirPorWhatsApp = async (
             scale: 2,
         });
 
-        elementsToHide.forEach((el, idx) => {
-            el.style.visibility = previousVisibility[idx];
-        });
+        elementsToHide.forEach((el, idx) => (el.style.visibility = previousVisibility[idx]));
+
         const image = canvas.toDataURL("image/png");
         const blob = await (await fetch(image)).blob();
-        const file = new File([blob], `cotizacion-${plan.plan}.png`, {
-            type: "image/png",
-        });
+        const file = new File([blob], `cotizacion-${plan.plan}.png`, { type: "image/png" });
 
-        if (isMobile && (navigator as any).canShare && (navigator as any).canShare({ files: [file] })) {
-            // 📱 En móvil, compartir directo con WhatsApp
+        if (
+            isMobile() &&
+            (navigator as any).canShare &&
+            (navigator as any).canShare({ files: [file] })
+        ) {
+            // 📱 En móvil, compartir directo
             await (navigator as any).share({
-                title: `Cotización ${compania}`,
+                title: `Cotización ${getCompaniaLabel(plan.aseguradora)}`,
                 text: mensaje,
                 files: [file],
             });
@@ -162,9 +261,7 @@ export const compartirPorWhatsApp = async (
             link.download = `cotizacion-${plan.plan}.png`;
             link.click();
 
-            const baseUrl = "https://web.whatsapp.com/send";
-            const url = `${baseUrl}?phone=${telefono}&text=${encodeURIComponent(mensaje)}`;
-            window.open(url, "_blank");
+            openWhatsAppText(telefono, mensaje);
 
             Swal.fire({
                 icon: "info",
@@ -175,10 +272,7 @@ export const compartirPorWhatsApp = async (
             });
         }
     } catch (err) {
-        // Restaurar por si falló antes
-        elementsToHide.forEach((el, idx) => {
-            el.style.visibility = previousVisibility[idx];
-        });
+        elementsToHide.forEach((el, idx) => (el.style.visibility = previousVisibility[idx]));
         console.error(err);
         Swal.fire("Error", "No se pudo generar la imagen.", "error");
     }

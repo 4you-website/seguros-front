@@ -6,6 +6,7 @@ import { Dialog, DialogPanel, Transition, TransitionChild } from "@headlessui/re
 import { useDispatch } from "react-redux";
 import { setPageTitle } from "../../store/themeConfigSlice";
 
+
 import IconPlus from "../../components/Icon/IconPlus";
 import IconEdit from "../../components/Icon/IconEdit";
 import IconTrashLines from "../../components/Icon/IconTrashLines";
@@ -20,11 +21,14 @@ import {
 } from "../../store/api/clientesApi";
 
 import { useGetStatesQuery } from "../../store/api/statesApi";
+import { useNavigate } from "react-router-dom";
+import IconCashBanknotes from "../../components/Icon/IconCashBanknotes";
 
 // ----------------------------------------------------------------------
 
 const Clientes = () => {
     const dispatch = useDispatch();
+    const navigate = useNavigate();
 
     useEffect(() => {
         dispatch(setPageTitle("Clientes"));
@@ -209,6 +213,15 @@ const Clientes = () => {
                                 textAlignment: "center",
                                 render: ({ id, ...cliente }) => (
                                     <div className="flex gap-4 clientes-center w-max mx-auto">
+                                        <button
+                                            type="button"
+                                            className="flex hover:text-primary"
+                                            title="Ver cotizaciones"
+                                            onClick={() => navigate(`/clientes/${id}/cotizaciones`)}
+                                        >
+                                            <IconCashBanknotes />
+                                        </button>
+
                                         <button
                                             type="button"
                                             className="flex hover:text-info"

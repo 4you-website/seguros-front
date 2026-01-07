@@ -5,8 +5,10 @@ import Swal, { SweetAlertIcon } from "sweetalert2";
 import { setPageTitle } from "../../store/themeConfigSlice";
 import { IRootState } from "../../store";
 
-import { INTEGRACIONES_CONFIG, IntegracionKey } from "../../types/integraciones";
+import { INTEGRACIONES_CONFIG, IntegracionKey } from "../../integracionesConfig";
 import { useUpdateUserDataFieldMutation } from "../../store/api/usersFieldsApi";
+
+import { badgeStyle, getCompaniaColor, getCompaniaNombre, getCompaniaLogoUrl } from "../../companiasConfig";
 
 // ------------------------------------------------------------
 
@@ -130,8 +132,8 @@ const UserConfig = () => {
                                     {/* Header */}
                                     <div className="flex items-center gap-3 mb-4">
                                         <img
-                                            src={cfg.logoSrc}
-                                            alt={cfg.title}
+                                            src={getCompaniaLogoUrl(cfg.key)}
+                                            alt={getCompaniaNombre(cfg.key)}
                                             className={cfg.logoClassName || "w-10 h-10 rounded-full object-cover"}
                                         />
                                         <div>

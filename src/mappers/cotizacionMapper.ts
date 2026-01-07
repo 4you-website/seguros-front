@@ -45,3 +45,5 @@ export const mapCotizarToApi = (payload: CotizarPayload): any => ({
     provincia: payload.provincia,
     valordelvehiculo: payload.valordelvehiculo,
 });
+
+

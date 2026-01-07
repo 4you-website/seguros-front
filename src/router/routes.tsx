@@ -91,6 +91,7 @@ import Error from '../components/Error';
 import Clientes from '../pages/Pages/Clientes';
 import UserConfig from '../pages/Pages/UserConfig';
 import Cotizador from '../pages/Pages/Cotizador';
+import ClienteCotizaciones from '../pages/Pages/ClientesCotizaciones';
 
 // 🧩 Tus rutas originales
 const baseRoutes = [
@@ -98,6 +99,10 @@ const baseRoutes = [
     { path: '/', element: <Navigate to="/auth/login" replace /> },
     { path: '/clientes', element: <Clientes /> },
     { path: '/cotizador', element: <Cotizador /> },
+    {
+        path: "/clientes/:clientId/cotizaciones",
+        element: <ClienteCotizaciones />,
+    },
     { path: '/configuracion', element: <UserConfig /> },
     { path: '/escritorio', element: <Escritorio /> },
     { path: '/analytics', element: <Analytics /> },
