@@ -2,26 +2,13 @@ import Swal from "sweetalert2";
 import html2canvas from "html2canvas";
 import { formatNumber } from "./formatNumber";
 import type { Cotizacion, CotizacionPlan } from "../types/Cotizacion";
+import { getCompaniaNombre } from "../companiasConfig";
 
 // --------------------------------------------------
 // Helpers
 // --------------------------------------------------
 
-// Mapeo simple de id de aseguradora → etiqueta visible
-const getCompaniaLabel = (id: string): string => {
-    switch ((id || "").toLowerCase()) {
-        case "atm":
-            return "ATM";
-        case "provincia":
-            return "Provincia Seguros";
-        case "fedpat":
-            return "Federación Patronal";
-        case "sancor":
-            return "Sancor";
-        default:
-            return (id || "").toUpperCase();
-    }
-};
+
 
 const isMobile = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
@@ -75,10 +62,35 @@ const openWhatsAppText = (telefono549: string, mensaje: string) => {
     window.open(url, "_blank");
 };
 
-type BuildMensajeOpts = {
-    aseguradoraId?: string;          // por si el plan NO trae .aseguradora (caso CotizacionGuardada)
-    extraTopLines?: string[];        // líneas extra arriba (ej: cliente, vehículo, fecha)
+// -----------------------
+// Tipos
+// -----------------------
+export type VehiculoInfo = {
+    marca?: string;
+    modelo?: string;
+    anio?: string | number;
 };
+
+const buildVehiculoLine = (vehiculo?: VehiculoInfo) => {
+    if (!vehiculo) return "";
+    const marca = (vehiculo.marca || "").trim();
+    const modelo = (vehiculo.modelo || "").trim();
+    const anio = vehiculo.anio ?? "";
+
+    const nombre = `${marca} ${modelo}`.trim();
+    if (!nombre && !anio) return "";
+
+    // Ej: 🚙 *Vehículo:* Ford Fiesta (2018)
+    return `🚙 *Vehículo:* ${nombre || "-"}${anio ? ` (${anio})` : ""}`;
+};
+
+type BuildMensajeOpts = {
+    aseguradoraId?: string;
+    extraTopLines?: string[];
+    vehiculo?: VehiculoInfo;
+};
+
+
 
 export const buildMensajeCotizacionTexto = (
     plan: Partial<CotizacionPlan> & Record<string, any>,
@@ -86,9 +98,8 @@ export const buildMensajeCotizacionTexto = (
     opts?: BuildMensajeOpts
 ) => {
     const aseguradoraId = (opts?.aseguradoraId || plan.aseguradora || "").toString();
-    const compania = getCompaniaLabel(aseguradoraId);
+    const compania = (aseguradoraId);
 
-    // metadata por aseguradora (si existe)
     const rawAseguradora = aseguradoraId ? cotizacion?.raw?.[aseguradoraId] : undefined;
 
     const fechaCotizacion =
@@ -105,27 +116,40 @@ export const buildMensajeCotizacionTexto = (
         "------------------------------------",
     ];
 
+    // ✅ Vehículo arriba (si existe)
+    const vehiculoLine = buildVehiculoLine(opts?.vehiculo);
+    if (vehiculoLine) header.push(vehiculoLine);
+
     const extra = (opts?.extraTopLines || []).filter(Boolean);
     if (extra.length) {
         header.push(...extra);
+    }
+
+    if (vehiculoLine || extra.length) {
         header.push("------------------------------------");
     }
 
+    const suma =
+        (plan as any).sumaAsegurada ??
+        (plan as any).suma_asegurada ??
+        0;
+
     const lineas: string[] = [
         ...header,
-        `🏢 *Compañia:* ${aseguradoraId ? aseguradoraId.toUpperCase() : "-"}`,
+        `🏢 *Compañía:* ${aseguradoraId ? aseguradoraId.toUpperCase() : "-"}`,
         `💡 *Plan:* ${plan.plan ?? "-"}`,
         `🛡️ *Cobertura:* ${plan.cubre ?? "-"}`,
         `💰 *Cuota${plan.frecuencia ? ` (${plan.frecuencia})` : ""}:* $${formatNumber(plan.cuota ?? 0)}`,
-        `🛡️ *Suma asegurada:* $${formatNumber(plan.sumaAsegurada ?? 0)}`,
+        `🛡️ *Suma asegurada:* $${formatNumber(suma ?? 0)}`,
     ];
 
-    if (plan.ajuste) lineas.push(`⚙️ *Ajuste:* ${plan.ajuste}`);
+    if ((plan as any).ajuste) lineas.push(`⚙️ *Ajuste:* ${(plan as any).ajuste}`);
     if (fechaCotizacion) lineas.push(`📅 *Fecha:* ${fechaCotizacion}`);
     if (numeroCotizacion) lineas.push(`🔢 *Nº Cotización:* ${numeroCotizacion}`);
 
     return lineas.join("\n");
 };
+
 
 // --------------------------------------------------
 // NUEVO: ClienteCotizaciones (solo texto, teléfono ya cargado)
@@ -137,8 +161,8 @@ type CompartirTextoClienteArgs = {
     plan: Record<string, any>; // el plan del modal (no necesariamente CotizacionPlan)
     cotizacion?: Cotizacion | null;  // por si tenés raw (si no, pasar null)
     extraTopLines?: string[];        // ej: cliente, vehículo, fecha, etc
+    vehiculo?: VehiculoInfo;
 };
-
 export const compartirCotizacionTextoClientePorWhatsApp = (args: CompartirTextoClienteArgs) => {
     const telefono = normalizeWhatsappPhoneAR(args.telefonoCliente || "");
 
@@ -154,20 +178,133 @@ export const compartirCotizacionTextoClientePorWhatsApp = (args: CompartirTextoC
     const mensaje = buildMensajeCotizacionTexto(args.plan, args.cotizacion ?? null, {
         aseguradoraId: args.aseguradoraId,
         extraTopLines: args.extraTopLines,
+        vehiculo: args.vehiculo, // ✅
     });
 
     openWhatsAppText(telefono, mensaje);
 };
 
+type CompartirPlanesArgs = {
+    planes: CotizacionPlan[];
+    cotizacion: Cotizacion | null;
+    telefonoPrefill?: string;
+    extraTopLines?: string[];
+    vehiculo?: VehiculoInfo; 
+};
+
+const buildMensajePlanesTexto = (
+    planes: CotizacionPlan[],
+    cotizacion: Cotizacion | null,
+    extraTopLines?: string[],
+     vehiculo?: VehiculoInfo
+) => {
+    const header: string[] = [
+        `🚗 *Cotización - Planes seleccionados*`,
+        "------------------------------------",
+    ];
+    // ✅ Vehículo arriba (si existe)
+    const vehiculoLine = buildVehiculoLine(vehiculo);
+    if (vehiculoLine) header.push(vehiculoLine);
+
+    const extra = (extraTopLines || []).filter(Boolean);
+    if (extra.length) {
+        header.push(...extra);
+        header.push("------------------------------------");
+    }
+
+    // agrupar por aseguradora
+    const grouped = planes.reduce((acc, p) => {
+        const key = String((p as any).aseguradora || "").toLowerCase();
+        if (!key) return acc;
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(p);
+        return acc;
+    }, {} as Record<string, CotizacionPlan[]>);
+
+    const body: string[] = [...header];
+
+    Object.entries(grouped).forEach(([asegId, list]) => {
+        const compania = getCompaniaNombre(asegId);
+
+        // metadata por aseguradora (si existe)
+        const rawAseguradora = cotizacion?.raw?.[asegId];
+        const fechaCotizacion =
+            rawAseguradora?.fechaCotizacion || rawAseguradora?.fecha_cotizacion || "";
+        const numeroCotizacion =
+            rawAseguradora?.numeroCotizacion || rawAseguradora?.id_cotizacion || "";
+
+        body.push(`🏢 *${compania}*`);
+        if (fechaCotizacion) body.push(`📅 *Fecha:* ${fechaCotizacion}`);
+        if (numeroCotizacion) body.push(`🔢 *Nº Cotización:* ${numeroCotizacion}`);
+
+        list.forEach((p, idx) => {
+            body.push(
+                `\n*${idx + 1}) ${p.plan ?? "-"}*`,
+                `🛡️ Cobertura: ${p.cubre ?? "-"}`,
+                `💰 Cuota${p.frecuencia ? ` (${p.frecuencia})` : ""}: $${formatNumber(p.cuota ?? 0)}`,
+                `🧾 Suma asegurada: $${formatNumber((p as any).sumaAsegurada ?? 0)}`,
+                p.ajuste ? `⚙️ Ajuste: ${p.ajuste}` : ""
+            );
+        });
+
+        body.push("\n------------------------------------");
+    });
+
+    // limpiar líneas vacías extra
+    return body.filter((l) => l !== "").join("\n");
+};
+
+export const compartirPlanesPorWhatsApp = async (args: CompartirPlanesArgs) => {
+    if (!args.planes?.length) return;
+
+    const { value: numero, isConfirmed } = await Swal.fire({
+        title: `Enviar ${args.planes.length > 1 ? "planes" : "plan"} por WhatsApp`,
+        input: "text",
+        inputValue: args.telefonoPrefill || "",
+        inputPlaceholder: "Ej: 1165543333",
+        showCancelButton: true,
+        confirmButtonText: "Enviar",
+        cancelButtonText: "Cancelar",
+        didOpen: () => {
+            // por si está dentro de modales con z-index alto
+            const container = Swal.getContainer();
+            if (container) container.style.zIndex = "9999";
+        },
+    });
+
+    if (!isConfirmed) return;
+
+    const telefono = normalizeWhatsappPhoneAR(String(numero || ""));
+    if (!telefono) {
+        Swal.fire("Error", "Número inválido. Verificá el celular ingresado.", "error");
+        return;
+    }
+
+    const mensaje = buildMensajePlanesTexto(
+        args.planes,
+        args.cotizacion,
+        args.extraTopLines,
+        args.vehiculo
+    );  
+    openWhatsAppText(telefono, mensaje);
+};
+
+
 // --------------------------------------------------
 // ORIGINAL: Cotizador (modal + texto/imagen) - se mantiene
-// --------------------------------------------------
+// -----------
+// ---------------------------------------
+type CompartirPorWhatsAppOpts = {
+    vehiculo?: VehiculoInfo;
+    extraTopLines?: string[];
+};
 
 export const compartirPorWhatsApp = async (
     id: string,
     plan: CotizacionPlan,
     _promo: any,
-    cotizacion: Cotizacion | null
+    cotizacion: Cotizacion | null,
+    options?: CompartirPorWhatsAppOpts
 ) => {
     // 1️⃣ Solicitar número y tipo de envío
     const { value: formValues, isConfirmed } = await Swal.fire({
@@ -209,9 +346,12 @@ export const compartirPorWhatsApp = async (
         return;
     }
 
-    const mensaje = buildMensajeCotizacionTexto(plan, cotizacion, { aseguradoraId: plan.aseguradora });
+    const mensaje = buildMensajeCotizacionTexto(plan, cotizacion, {
+        aseguradoraId: plan.aseguradora,
+        vehiculo: options?.vehiculo,             // ✅
+        extraTopLines: options?.extraTopLines,   // ✅
+    });
 
-    // 3️⃣ Si elige texto
     if (tipo === "texto") {
         openWhatsAppText(telefono, mensaje);
         return;
@@ -229,6 +369,8 @@ export const compartirPorWhatsApp = async (
     const previousVisibility = elementsToHide.map((el) => el.style.visibility);
 
     elementsToHide.forEach((el) => (el.style.visibility = "hidden"));
+
+
 
     try {
         const canvas = await html2canvas(card, {
@@ -250,7 +392,7 @@ export const compartirPorWhatsApp = async (
         ) {
             // 📱 En móvil, compartir directo
             await (navigator as any).share({
-                title: `Cotización ${getCompaniaLabel(plan.aseguradora)}`,
+                title: `Cotización ${getCompaniaNombre(plan.aseguradora)}`,
                 text: mensaje,
                 files: [file],
             });

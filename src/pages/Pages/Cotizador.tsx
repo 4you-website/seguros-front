@@ -21,7 +21,8 @@ import { useGetClientesQuery, useAddClienteMutation } from "../../store/api/clie
 // 👉 Asegurate de tener este hook en tu quotationsApi (POST /quotations/result)
 import { useAddQuotationResultMutation } from "../../store/api/quotationsApi";
 
-import { compartirPorWhatsApp } from "../../utils/whatsappUtils";
+import { compartirPorWhatsApp, compartirPlanesPorWhatsApp } from "../../utils/whatsappUtils";
+
 import { formatNumber } from "../../utils/formatNumber";
 
 import { getLocalidadesByProvincia } from "../../utils/localidadesUtils";
@@ -307,7 +308,7 @@ const Cotizador = () => {
 
     const toggleCompania = (id: string) => {
         setCompaniasSeleccionadas((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
-    };    
+    };
 
     // -----------------------------
     // Cotizar
@@ -893,9 +894,17 @@ const Cotizador = () => {
                                                         `card-${anyPlan.aseguradora}-${anyPlan.plan}-${anyPlan.idCotizacion}-${index}`,
                                                         plan,
                                                         null,
-                                                        cotizacion
+                                                        cotizacion,
+                                                        {
+                                                            vehiculo: {
+                                                                marca: brands.find((b) => String(b.id) === String(form.marca))?.name,
+                                                                modelo: models.find((m) => String(m.id) === String(form.modelo))?.name,
+                                                                anio: form.anio,
+                                                            },
+                                                        }
                                                     )
                                                 }
+
                                                 className="w-full py-2 rounded-lg bg-green-500 text-white font-semibold hover:bg-green-600 transition flex items-center justify-center gap-2"
                                             >
                                                 <img src="/assets/images/whatsapp.png" alt="WhatsApp" className="w-5 h-5" />
@@ -912,11 +921,29 @@ const Cotizador = () => {
                             <div className="flex flex-col sm:flex-row justify-center gap-4 mt-10 px-6">
                                 <button
                                     type="button"
+                                    onClick={() =>
+                                        compartirPlanesPorWhatsApp({
+                                            planes: planesSeleccionados,
+                                            cotizacion,
+                                            telefonoPrefill: "",
+                                            vehiculo: {
+                                                marca: brands.find((b) => String(b.id) === String(form.marca))?.name,
+                                                modelo: models.find((m) => String(m.id) === String(form.modelo))?.name,
+                                                anio: form.anio,
+                                            },
+                                            extraTopLines: [
+                                                `📍 *CP:* ${form.codpostal || "-"}`,
+                                                `💲 *Valor vehículo:* $${formatNumber(form.valordelvehiculo || 0)}`,
+                                            ],
+                                        })
+                                    }
+
                                     className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold px-6 py-3 rounded-lg transition w-full sm:w-auto"
                                 >
                                     <img src="/assets/images/whatsapp.png" alt="WhatsApp" className="w-5 h-5" />
                                     Enviar {planesSeleccionados.length > 1 ? "planes" : "plan"} por WhatsApp
                                 </button>
+
 
                                 <button
                                     type="button"

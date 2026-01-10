@@ -512,9 +512,17 @@ const ClienteCotizaciones = () => {
                                                                                             aseguradoraId: asegId,
                                                                                             plan: p,
                                                                                             cotizacion: null,
+
+                                                                                            // ✅ Nuevo: vehículo estandarizado
+                                                                                            vehiculo: {
+                                                                                                marca: selected?.marca?.name,
+                                                                                                modelo: selected?.modelo?.name,
+                                                                                                anio: selected?.anio,
+                                                                                            },
+
+                                                                                            // ✅ Dejá acá solo lo que NO sea vehículo
                                                                                             extraTopLines: [
                                                                                                 `👤 *Cliente:* ${cliente ? `${cliente.lastname ?? ""} ${cliente.name ?? ""}`.trim() : "-"}`,
-                                                                                                `🚘 *Vehículo:* ${selected ? getVehiculoLabel(selected) : "-"}`,
                                                                                                 `📅 *Fecha:* ${selected ? formatDateEs(selected.fecha) : "-"}`,
                                                                                             ],
                                                                                         })
@@ -524,6 +532,7 @@ const ClienteCotizaciones = () => {
                                                                                     WhatsApp
                                                                                 </button>
                                                                             </td>
+
 
                                                                         </tr>
                                                                     ))}
