@@ -53,6 +53,20 @@ const getTodayLocalISO = () => {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
+const normalizeText = (value: string) =>
+    value
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim();
+
+const matchesSearchTerms = (label: string, inputValue: string) => {
+    const normalizedLabel = normalizeText(label);
+    const searchTerms = normalizeText(inputValue).split(/\s+/).filter(Boolean);
+    if (!searchTerms.length) return true;
+    return searchTerms.every((term) => normalizedLabel.includes(term));
+};
+
 const Cotizador = () => {
     const dispatch = useDispatch();
 
@@ -161,6 +175,11 @@ const Cotizador = () => {
         []
     );
 
+    const modelosOptions = useMemo(
+        () => models.map((m) => ({ value: m.id.toString(), label: m.name })),
+        [models]
+    );
+
     // -----------------------------
     // Normalizadores (API cotizar -> UI)
     // -----------------------------
@@ -200,8 +219,8 @@ const Cotizador = () => {
     // -----------------------------
     // CP -> Provincia/Localidad
     // -----------------------------
-    const buscarPorCodigoPostal = async () => {
-        const codigo = form.codpostal.trim();
+    const buscarPorCodigoPostal = async (codigoOverride?: string) => {
+        const codigo = (codigoOverride ?? form.codpostal).trim();
         if (!codigo) {
             showToast("Ingrese un código postal válido", "warning");
             return;
@@ -300,6 +319,9 @@ const Cotizador = () => {
     const changeValue = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { id, value } = e.target;
         setForm({ ...form, [id]: value });
+        if (id === "codpostal" && value.trim().length >= 4) {
+            buscarPorCodigoPostal(value);
+        }
     };
 
     const toggleSeleccion = (plan: CotizacionPlan) => {
@@ -536,7 +558,7 @@ const Cotizador = () => {
                             />
                             <button
                                 type="button"
-                                onClick={buscarPorCodigoPostal}
+                                onClick={() => buscarPorCodigoPostal()}
                                 className="bg-[#eee] dark:bg-[#1b2e4b] flex justify-center items-center ltr:rounded-r-md rtl:rounded-l-md px-3 border border-white-light dark:border-[#17263c] hover:bg-primary hover:text-white transition"
                                 title="Buscar por código postal"
                                 disabled={loadingCP}
@@ -649,12 +671,12 @@ const Cotizador = () => {
                         <Select
                             id="modelo"
                             placeholder={loadingModels ? "Cargando modelos..." : "Seleccione un modelo"}
-                            options={models.map((m) => ({ value: m.id.toString(), label: m.name }))}
+                            options={modelosOptions}
                             value={
                                 form.modelo
                                     ? {
                                         value: form.modelo,
-                                        label: models.find((m) => m.id.toString() === form.modelo)?.name || "",
+                                        label: modelosOptions.find((m) => m.value === form.modelo)?.label || "",
                                     }
                                     : null
                             }
@@ -663,6 +685,11 @@ const Cotizador = () => {
                                     ...form,
                                     modelo: selected?.value || "",
                                 })
+                            }
+                            filterOption={(option, inputValue) => matchesSearchTerms(option.label, inputValue)}
+                            isSearchable
+                            noOptionsMessage={({ inputValue }) =>
+                                inputValue ? "No se encontraron modelos" : "No hay modelos disponibles"
                             }
                             isDisabled={loadingModels}
                             className="react-select-container"
