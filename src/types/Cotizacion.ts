@@ -7,6 +7,8 @@ export interface CotizarPayload {
     modelo: string;
     provincia: string;
     valordelvehiculo: string;
+    bonificacion?: string; // código de bonificación adicional (1 = SIN AJUSTE, etc.)
+    accesorios?: number; // 0 si no está tildado, sino el valor del input
 }
 
 // Un plan cotizado (una fila de "result")
@@ -20,6 +22,7 @@ export interface CotizacionPlan {
     idCotizacion: string;
     plan: string;
     sumaAsegurada: number;
+    promocionesporplan?: string | null;
 }
 
 // Modelo que usamos en el front

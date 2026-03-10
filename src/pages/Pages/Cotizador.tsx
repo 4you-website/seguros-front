@@ -67,6 +67,16 @@ const matchesSearchTerms = (label: string, inputValue: string) => {
     return searchTerms.every((term) => normalizedLabel.includes(term));
 };
 
+const BONIFICACIONES_OPCIONES = [
+    { codigo: "1", denominacion: "SIN AJUSTE" },
+    { codigo: "10", denominacion: "5% DE AJUSTE" },
+    { codigo: "2", denominacion: "10% DE AJUSTE" },
+    { codigo: "3", denominacion: "15% DE AJUSTE" },
+    { codigo: "4", denominacion: "20% DE AJUSTE" },
+    { codigo: "11", denominacion: "25% DE AJUSTE" },
+    { codigo: "5", denominacion: "30% DE AJUSTE" },
+];
+
 const Cotizador = () => {
     const dispatch = useDispatch();
 
@@ -101,6 +111,9 @@ const Cotizador = () => {
         provincia: "",
         localidad: "",
         valordelvehiculo: "20000000",
+        bonificacion: "1",
+        accesorios: false,
+        valorAccesorios: "",
     });
 
     // -----------------------------
@@ -207,6 +220,7 @@ const Cotizador = () => {
                         ajuste: p.ajuste,
                         sumaAsegurada: Number(p.suma_asegurada ?? p.sumaAsegurada ?? 0),
                         idCotizacion: String(p.id_cotizacion ?? p.idCotizacion ?? ""),
+                        promocionesporplan: p.promocionesporplan ?? p.promociones_por_plan ?? null,
                     } as any);
                 });
             });
@@ -355,6 +369,8 @@ const Cotizador = () => {
                 modelo: form.modelo,
                 provincia: form.provincia,
                 valordelvehiculo: form.valordelvehiculo,
+                bonificacion: form.bonificacion,
+                accesorios: form.accesorios ? Number(form.valorAccesorios) || 0 : 0,
             };
 
             const data = await cotizarApi(payload).unwrap();
@@ -735,6 +751,68 @@ const Cotizador = () => {
                         <input id="anio" type="text" className="form-input" value={form.anio} onChange={changeValue} />
                     </div>
 
+                    {/* Provincia Seguros: Bonificación y Accesorios (solo si está elegido en Cotizar en) */}
+                    {companiasSeleccionadas.includes("provincia") && (
+                        <div className="sm:col-span-2 space-y-4 p-4 rounded-lg border border-white-light dark:border-[#1b2e4b] bg-[#f9fafb] dark:bg-[#0d1727]/50">
+                            <h3 className="font-bold text-lg text-gray-800 dark:text-gray-200">Provincia Seguros</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                {/* Bonificación adicional */}
+                                <div>
+                                    <label htmlFor="bonificacion" className="font-semibold">
+                                        Bonificación adicional
+                                    </label>
+                                    <Select
+                                        id="bonificacion"
+                                        placeholder="Seleccione bonificación"
+                                        options={BONIFICACIONES_OPCIONES.map((b) => ({ value: b.codigo, label: b.denominacion }))}
+                                        value={
+                                            form.bonificacion
+                                                ? {
+                                                    value: form.bonificacion,
+                                                    label: BONIFICACIONES_OPCIONES.find((b) => b.codigo === form.bonificacion)?.denominacion || "",
+                                                }
+                                                : null
+                                        }
+                                        onChange={(selected) => setForm((prev) => ({ ...prev, bonificacion: selected?.value || "1" }))}
+                                        className="react-select-container"
+                                        classNamePrefix="react-select"
+                                    />
+                                </div>
+
+                                {/* Accesorios */}
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={form.accesorios}
+                                            onChange={(e) =>
+                                                setForm((prev) => ({
+                                                    ...prev,
+                                                    accesorios: e.target.checked,
+                                                    ...(e.target.checked ? {} : { valorAccesorios: "" }),
+                                                }))
+                                            }
+                                            className="form-checkbox rounded"
+                                        />
+                                        <span className="font-semibold">¿Accesorios?</span>
+                                    </label>
+                                    {form.accesorios && (
+                                        <input
+                                            id="valorAccesorios"
+                                            type="number"
+                                            min={0}
+                                            step={1}
+                                            placeholder="Valor"
+                                            className="form-input w-32"
+                                            value={form.valorAccesorios}
+                                            onChange={changeValue}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Cápsulas de compañías */}
                     <div className="sm:col-span-2 mt-2">
                         <label className="font-semibold mb-2 block">Cotizar en</label>
@@ -876,6 +954,12 @@ const Cotizador = () => {
                                                     🏢 <strong>Compañía:</strong>{" "}
                                                     <span className="font-semibold">{getCompaniaNombre(anyPlan.aseguradora)}</span>
                                                 </li>
+                                                {anyPlan.promocionesporplan && (
+                                                    <li>
+                                                        🏷️ <strong>Promoción:</strong>{" "}
+                                                        <span className="font-semibold">{anyPlan.promocionesporplan}</span>
+                                                    </li>
+                                                )}
                                                 <li>
                                                     ✅ <strong>Cuota:</strong>{" "}
                                                     <span className="font-semibold text-primary">${formatNumber(anyPlan.cuota)}</span>

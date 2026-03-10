@@ -22,6 +22,7 @@ export const mapCotizacionFromApi = (data: any): Cotizacion => {
                         idCotizacion: String(item.id_cotizacion ?? ""),
                         plan: item.plan ?? "",
                         sumaAsegurada: Number(item.suma_asegurada ?? 0),
+                        promocionesporplan: item.promocionesporplan ?? item.promociones_por_plan ?? null,
                     });
                 });
             }
@@ -44,6 +45,8 @@ export const mapCotizarToApi = (payload: CotizarPayload): any => ({
     modelo: payload.modelo,
     provincia: payload.provincia,
     valordelvehiculo: payload.valordelvehiculo,
+    ...(payload.bonificacion != null && { bonificacion: payload.bonificacion }),
+    accesorios: payload.accesorios ?? 0,
 });
 
 

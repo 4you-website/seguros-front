@@ -77,12 +77,22 @@ const ClienteCotizaciones = () => {
         return `${marca} ${modelo}`.trim();
     };
 
+    const getSumaAsegurada = (q: CotizacionGuardada): number => {
+        const planes = Object.values(q.aseguradoras || {}).flat();
+        const first = planes[0];
+        return first ? Number(first.sumaAsegurada ?? 0) : 0;
+    };
+
     const sortedRecords = useMemo(() => {
         let sorted: CotizacionGuardada[];
 
         if (sortStatus.columnAccessor === "fecha") {
             sorted = [...quotations].sort(
                 (a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
+            );
+        } else if (sortStatus.columnAccessor === "suma_asegurada") {
+            sorted = [...quotations].sort(
+                (a, b) => getSumaAsegurada(a) - getSumaAsegurada(b)
             );
         } else {
             sorted = sortBy(quotations, sortStatus.columnAccessor as any);
@@ -223,8 +233,8 @@ const ClienteCotizaciones = () => {
 
                                     <div className="mt-3 flex items-center justify-between">
                                         <div className="text-sm">
-                                            <span className="text-gray-500">Valor: </span>
-                                            <span className="font-semibold">${formatNumber(q.valor_vehiculo)}</span>
+                                            <span className="text-gray-500">Suma asegurada: </span>
+                                            <span className="font-semibold">${formatNumber(getSumaAsegurada(q))}</span>
                                         </div>
                                     </div>
 
@@ -318,10 +328,10 @@ const ClienteCotizaciones = () => {
                                 ),
                             },
                             {
-                                accessor: "valor_vehiculo",
-                                title: "Valor vehículo",
+                                accessor: "suma_asegurada",
+                                title: "Suma asegurada",
                                 sortable: true,
-                                render: (q) => `$${formatNumber(q.valor_vehiculo)}`,
+                                render: (q) => `$${formatNumber(getSumaAsegurada(q))}`,
                             },
                             {
                                 accessor: "aseguradoras",
