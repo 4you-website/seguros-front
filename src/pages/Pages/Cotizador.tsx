@@ -68,13 +68,27 @@ const matchesSearchTerms = (label: string, inputValue: string) => {
 };
 
 const BONIFICACIONES_OPCIONES = [
-    { codigo: "1", denominacion: "SIN AJUSTE" },
-    { codigo: "10", denominacion: "5% DE AJUSTE" },
-    { codigo: "2", denominacion: "10% DE AJUSTE" },
-    { codigo: "3", denominacion: "15% DE AJUSTE" },
-    { codigo: "4", denominacion: "20% DE AJUSTE" },
-    { codigo: "11", denominacion: "25% DE AJUSTE" },
-    { codigo: "5", denominacion: "30% DE AJUSTE" },
+    { codigo: "1", descripcion: "SIN AJUSTE" },
+    { codigo: "2", descripcion: "5% ADICIONAL" },
+    { codigo: "3", descripcion: "10% ADICIONAL" },
+    { codigo: "4", descripcion: "15% ADICIONAL" },
+    { codigo: "5", descripcion: "20% ADICIONAL" },
+    { codigo: "6", descripcion: "25% ADICIONAL" },
+];
+
+const CLAUSULA_AJUSTE_OPCIONES = [
+    { codigo: "0", descripcion: "SIN AJUSTE" },
+    { codigo: "10", descripcion: "10%" },
+    { codigo: "15", descripcion: "15%" },
+    { codigo: "20", descripcion: "20%" },
+    { codigo: "25", descripcion: "25%" },
+    { codigo: "30", descripcion: "30%" },
+    { codigo: "35", descripcion: "35%" },
+    { codigo: "40", descripcion: "40%" },
+    { codigo: "50", descripcion: "50%" },
+    { codigo: "60", descripcion: "60%" },
+    { codigo: "80", descripcion: "80%" },
+    { codigo: "99", descripcion: "100%" },
 ];
 
 const Cotizador = () => {
@@ -114,6 +128,7 @@ const Cotizador = () => {
         bonificacion: "1",
         accesorios: false,
         valorAccesorios: "",
+        clausulaAjuste: "20",
     });
 
     // -----------------------------
@@ -371,6 +386,7 @@ const Cotizador = () => {
                 valordelvehiculo: form.valordelvehiculo,
                 bonificacion: form.bonificacion,
                 accesorios: form.accesorios ? Number(form.valorAccesorios) || 0 : 0,
+                clausulaAjuste: form.clausulaAjuste,
             };
 
             const data = await cotizarApi(payload).unwrap();
@@ -755,7 +771,7 @@ const Cotizador = () => {
                     {companiasSeleccionadas.includes("provincia") && (
                         <div className="sm:col-span-2 space-y-4 p-4 rounded-lg border border-white-light dark:border-[#1b2e4b] bg-[#f9fafb] dark:bg-[#0d1727]/50">
                             <h3 className="font-bold text-lg text-gray-800 dark:text-gray-200">Provincia Seguros</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                                 {/* Bonificación adicional */}
                                 <div>
                                     <label htmlFor="bonificacion" className="font-semibold">
@@ -764,16 +780,39 @@ const Cotizador = () => {
                                     <Select
                                         id="bonificacion"
                                         placeholder="Seleccione bonificación"
-                                        options={BONIFICACIONES_OPCIONES.map((b) => ({ value: b.codigo, label: b.denominacion }))}
+                                        options={BONIFICACIONES_OPCIONES.map((b) => ({ value: b.codigo, label: b.descripcion }))}
                                         value={
                                             form.bonificacion
                                                 ? {
                                                     value: form.bonificacion,
-                                                    label: BONIFICACIONES_OPCIONES.find((b) => b.codigo === form.bonificacion)?.denominacion || "",
+                                                    label: BONIFICACIONES_OPCIONES.find((b) => b.codigo === form.bonificacion)?.descripcion || "",
                                                 }
                                                 : null
                                         }
                                         onChange={(selected) => setForm((prev) => ({ ...prev, bonificacion: selected?.value || "1" }))}
+                                        className="react-select-container"
+                                        classNamePrefix="react-select"
+                                    />
+                                </div>
+
+                                {/* Cláusula de Ajuste */}
+                                <div>
+                                    <label htmlFor="clausulaAjuste" className="font-semibold">
+                                        Cláusula de Ajuste
+                                    </label>
+                                    <Select
+                                        id="clausulaAjuste"
+                                        placeholder="Seleccione cláusula"
+                                        options={CLAUSULA_AJUSTE_OPCIONES.map((c) => ({ value: c.codigo, label: c.descripcion }))}
+                                        value={
+                                            form.clausulaAjuste != null
+                                                ? {
+                                                    value: form.clausulaAjuste,
+                                                    label: CLAUSULA_AJUSTE_OPCIONES.find((c) => c.codigo === form.clausulaAjuste)?.descripcion || "",
+                                                }
+                                                : null
+                                        }
+                                        onChange={(selected) => setForm((prev) => ({ ...prev, clausulaAjuste: selected?.value ?? "20" }))}
                                         className="react-select-container"
                                         classNamePrefix="react-select"
                                     />
@@ -970,7 +1009,12 @@ const Cotizador = () => {
                                                 </li>
                                                 {anyPlan.ajuste && (
                                                     <li>
-                                                        ⚙️ <strong>Ajuste:</strong> <span className="font-semibold">{anyPlan.ajuste}</span>
+                                                        ⚙️ <strong>Ajuste:</strong>{" "}
+                                                        <span className="font-semibold">
+                                                            {/^\d+$/.test(String(anyPlan.ajuste).trim())
+                                                                ? `${anyPlan.ajuste}%`
+                                                                : anyPlan.ajuste}
+                                                        </span>
                                                     </li>
                                                 )}
                                                 <li data-hide-on-share="true">

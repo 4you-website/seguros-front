@@ -47,6 +47,7 @@ export const mapCotizarToApi = (payload: CotizarPayload): any => ({
     valordelvehiculo: payload.valordelvehiculo,
     ...(payload.bonificacion != null && { bonificacion: payload.bonificacion }),
     accesorios: payload.accesorios ?? 0,
+    ...(payload.clausulaAjuste != null && { clausulaAjuste: payload.clausulaAjuste }),
 });
 
 

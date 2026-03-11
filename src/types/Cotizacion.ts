@@ -9,6 +9,7 @@ export interface CotizarPayload {
     valordelvehiculo: string;
     bonificacion?: string; // código de bonificación adicional (1 = SIN AJUSTE, etc.)
     accesorios?: number; // 0 si no está tildado, sino el valor del input
+    clausulaAjuste?: string; // Provincia: cláusula de ajuste (0 = SIN AJUSTE, 10, 15, ... 99 = 100%)
 }
 
 // Un plan cotizado (una fila de "result")
