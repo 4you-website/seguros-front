@@ -2,7 +2,7 @@ const Footer = () => {
     return <div 
     className="dark:text-white-dark text-center ltr:sm:text-left rtl:sm:text-right p-6 pt-0 mt-auto"
     >© 
-    {new Date().getFullYear()}. 4you.website - Derechos Reservados - Versión 1.5
+    {new Date().getFullYear()}. 4you.website - Derechos Reservados - Versión 1.6
     </div>;
 };
 

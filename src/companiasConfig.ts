@@ -14,17 +14,16 @@ export const COMPANIAS = [
         logoUrl: "/assets/images/aseguradoras/provincia-logo.png",
     },
     {
-        id: "fedpat",
-        nombre: "FedPat",
-        color: "#0858A4",
-        // si no lo tenés aún, poné el tuyo cuando exista
-        logoUrl: "/assets/images/aseguradoras/fedpat-logo.png",
-    },
-    {
         id: "sancor",
         nombre: "Sancor Seguros",
         color: "#C00869",
         logoUrl: "/assets/images/aseguradoras/sancor-logo.svg",
+    },
+    {
+        id: "andina",
+        nombre: "Mercantil Andina",
+        color: "#0D6E47",
+        logoUrl: "/assets/images/aseguradoras/andina-logo.png",
     },
 ] as const;
 

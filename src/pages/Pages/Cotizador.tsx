@@ -32,7 +32,7 @@ import { useCotizarMutation } from "../../store/api/assuranceApi";
 import type { CotizarPayload, Cotizacion, CotizacionPlan } from "../../types/Cotizacion";
 import type { Cliente } from "../../types/Cliente";
 
-import { COMPANIAS, getCompaniaColor, getCompaniaNombre } from "../../companiasConfig";
+import { COMPANIAS, getCompaniaColor, getCompaniaNombre, type CompaniaId } from "../../companiasConfig";
 
 
 
@@ -150,7 +150,7 @@ const Cotizador = () => {
     const { data: models = [], isLoading: loadingModels } = useGetModelsQuery(form.marca || undefined);
 
     const [filtro, setFiltro] = useState<"todos" | "riesgo" | "terceros" | "civil" | "robo">("todos");
-    const [filtroCompania, setFiltroCompania] = useState<"todas" | "atm" | "provincia" | "fedpat" | "sancor">("todas");
+    const [filtroCompania, setFiltroCompania] = useState<"todas" | CompaniaId>("todas");
     const [planesSeleccionados, setPlanesSeleccionados] = useState<CotizacionPlan[]>([]);
 
     // compañías seleccionadas (por defecto todas)
