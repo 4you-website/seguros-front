@@ -11,6 +11,11 @@ export const mapCotizacionFromApi = (data: any): Cotizacion => {
         Object.entries<any>(data).forEach(([aseguradora, value]) => {
             const result = value?.result;
             if (Array.isArray(result)) {
+                const bonificacionBloque =
+                    value?.bonificacion != null && !Number.isNaN(Number(value.bonificacion))
+                        ? Number(value.bonificacion)
+                        : undefined;
+
                 result.forEach((item: any) => {
                     planes.push({
                         aseguradora,
@@ -23,6 +28,7 @@ export const mapCotizacionFromApi = (data: any): Cotizacion => {
                         plan: item.plan ?? "",
                         sumaAsegurada: Number(item.suma_asegurada ?? 0),
                         promocionesporplan: item.promocionesporplan ?? item.promociones_por_plan ?? null,
+                        ...(bonificacionBloque != null ? { bonificacion: bonificacionBloque } : {}),
                     });
                 });
             }
@@ -48,6 +54,8 @@ export const mapCotizarToApi = (payload: CotizarPayload): any => ({
     ...(payload.bonificacion != null && { bonificacion: payload.bonificacion }),
     accesorios: payload.accesorios ?? 0,
     ...(payload.clausulaAjuste != null && { clausulaAjuste: payload.clausulaAjuste }),
+    ...(payload.bonificacionAndina != null && { bonificacionAndina: payload.bonificacionAndina }),
+    ...(payload.comisionAndina != null && { comisionAndina: payload.comisionAndina }),
 });
 
 

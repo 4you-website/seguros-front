@@ -10,6 +10,8 @@ export interface CotizarPayload {
     bonificacion?: string; // código de bonificación adicional (1 = SIN AJUSTE, etc.)
     accesorios?: number; // 0 si no está tildado, sino el valor del input
     clausulaAjuste?: string; // Provincia: cláusula de ajuste (0 = SIN AJUSTE, 10, 15, ... 99 = 100%)
+    bonificacionAndina?: number; // Mercantil Andina
+    comisionAndina?: number; // Mercantil Andina
 }
 
 // Un plan cotizado (una fila de "result")
@@ -24,6 +26,8 @@ export interface CotizacionPlan {
     plan: string;
     sumaAsegurada: number;
     promocionesporplan?: string | null;
+    /** Bloque API (ej. andina.bonificacion) */
+    bonificacion?: number | null;
 }
 
 // Modelo que usamos en el front

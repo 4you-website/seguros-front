@@ -23,7 +23,7 @@ import { useAddQuotationResultMutation } from "../../store/api/quotationsApi";
 
 import { compartirPorWhatsApp, compartirPlanesPorWhatsApp } from "../../utils/whatsappUtils";
 
-import { formatNumber } from "../../utils/formatNumber";
+import { formatComisionParaCotizacion, formatNumber } from "../../utils/formatNumber";
 
 import { getLocalidadesByProvincia } from "../../utils/localidadesUtils";
 import { findStateByProvinciaNombre, mapApiProvinceNameToLocalidades } from "../../utils/matchProvinciaJSONvsAPI";
@@ -129,6 +129,8 @@ const Cotizador = () => {
         accesorios: false,
         valorAccesorios: "",
         clausulaAjuste: "20",
+        bonificacionAndina: "",
+        comisionAndina: "",
     });
 
     // -----------------------------
@@ -224,6 +226,11 @@ const Cotizador = () => {
                 const arr = block?.result;
                 if (!Array.isArray(arr)) return;
 
+                const bonificacionBloque =
+                    block?.bonificacion != null && !Number.isNaN(Number(block.bonificacion))
+                        ? Number(block.bonificacion)
+                        : undefined;
+
                 arr.forEach((p: any) => {
                     planesNorm.push({
                         aseguradora,
@@ -236,6 +243,7 @@ const Cotizador = () => {
                         sumaAsegurada: Number(p.suma_asegurada ?? p.sumaAsegurada ?? 0),
                         idCotizacion: String(p.id_cotizacion ?? p.idCotizacion ?? ""),
                         promocionesporplan: p.promocionesporplan ?? p.promociones_por_plan ?? null,
+                        ...(bonificacionBloque != null ? { bonificacion: bonificacionBloque } : {}),
                     } as any);
                 });
             });
@@ -387,6 +395,8 @@ const Cotizador = () => {
                 bonificacion: form.bonificacion,
                 accesorios: form.accesorios ? Number(form.valorAccesorios) || 0 : 0,
                 clausulaAjuste: form.clausulaAjuste,
+                bonificacionAndina: Number(form.bonificacionAndina) || 0,
+                comisionAndina: Number(form.comisionAndina) || 0,
             };
 
             const data = await cotizarApi(payload).unwrap();
@@ -852,6 +862,45 @@ const Cotizador = () => {
                         </div>
                     )}
 
+                    {/* Mercantil Andina: comisión y bonificación (solo si está elegido en Cotizar en) */}
+                    {companiasSeleccionadas.includes("andina") && (
+                        <div className="sm:col-span-2 space-y-4 p-4 rounded-lg border border-white-light dark:border-[#1b2e4b] bg-[#f9fafb] dark:bg-[#0d1727]/50">
+                            <h3 className="font-bold text-lg text-gray-800 dark:text-gray-200">Mercantil Andina</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                <div>
+                                    <label htmlFor="comisionAndina" className="font-semibold">
+                                        Comisión
+                                    </label>
+                                    <input
+                                        id="comisionAndina"
+                                        type="number"
+                                        className="form-input"
+                                        placeholder="0"
+                                        min={0}
+                                        step="any"
+                                        value={form.comisionAndina}
+                                        onChange={changeValue}
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="bonificacionAndina" className="font-semibold">
+                                        Bonificación
+                                    </label>
+                                    <input
+                                        id="bonificacionAndina"
+                                        type="number"
+                                        className="form-input"
+                                        placeholder="0"
+                                        min={0}
+                                        step="any"
+                                        value={form.bonificacionAndina}
+                                        onChange={changeValue}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Cápsulas de compañías */}
                     <div className="sm:col-span-2 mt-2">
                         <label className="font-semibold mb-2 block">Cotizar en</label>
@@ -999,6 +1048,16 @@ const Cotizador = () => {
                                                         <span className="font-semibold">{anyPlan.promocionesporplan}</span>
                                                     </li>
                                                 )}
+                                                {String(anyPlan.aseguradora).toLowerCase() === "andina" &&
+                                                    plan.bonificacion != null &&
+                                                    !Number.isNaN(Number(plan.bonificacion)) && (
+                                                    <li>
+                                                        🎁 <strong>Bonificación:</strong>{" "}
+                                                        <span className="font-semibold">
+                                                            {formatNumber(plan.bonificacion)}%
+                                                        </span>
+                                                    </li>
+                                                )}
                                                 <li>
                                                     ✅ <strong>Cuota:</strong>{" "}
                                                     <span className="font-semibold text-primary">${formatNumber(anyPlan.cuota)}</span>
@@ -1019,7 +1078,9 @@ const Cotizador = () => {
                                                 )}
                                                 <li data-hide-on-share="true">
                                                     💰 <strong>Comisión:</strong>{" "}
-                                                    <span className="font-semibold">${formatNumber(anyPlan.comision)}</span>
+                                                    <span className="font-semibold">
+                                                        {formatComisionParaCotizacion(anyPlan.aseguradora, anyPlan.comision)}
+                                                    </span>
                                                 </li>
                                             </ul>
                                         </div>

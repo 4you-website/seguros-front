@@ -14,7 +14,7 @@ import { useGetClientesQuery } from "../../store/api/clientesApi";
 import { useGetQuotationsQuery } from "../../store/api/quotationsApi";
 
 import type { CotizacionGuardada } from "../../types";
-import { formatNumber } from "../../utils/formatNumber";
+import { formatComisionParaCotizacion, formatNumber } from "../../utils/formatNumber";
 
 import { compartirCotizacionTextoClientePorWhatsApp } from "../../utils/whatsappUtils";
 
@@ -453,7 +453,7 @@ const ClienteCotizaciones = () => {
 
                                                                     <div className="text-gray-500">Comisión</div>
                                                                     <div className="text-right">
-                                                                        ${formatNumber(p.comision)}
+                                                                        {formatComisionParaCotizacion(asegId, p.comision)}
                                                                     </div>
 
                                                                     {p.ajuste ? (
@@ -512,7 +512,7 @@ const ClienteCotizaciones = () => {
                                                                             <td>${formatNumber(p.cuota)}</td>
                                                                             <td>{p.frecuencia}</td>
                                                                             <td>${formatNumber(p.sumaAsegurada)}</td>
-                                                                            <td>${formatNumber(p.comision)}</td>
+                                                                            <td>{formatComisionParaCotizacion(asegId, p.comision)}</td>
                                                                             <td>
                                                                                 <button
                                                                                     type="button"

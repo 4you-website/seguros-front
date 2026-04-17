@@ -1,6 +1,6 @@
 import Swal from "sweetalert2";
 import html2canvas from "html2canvas";
-import { formatNumber } from "./formatNumber";
+import { formatComisionParaCotizacion, formatNumber } from "./formatNumber";
 import type { Cotizacion, CotizacionPlan } from "../types/Cotizacion";
 import { getCompaniaNombre } from "../companiasConfig";
 
@@ -141,7 +141,16 @@ export const buildMensajeCotizacionTexto = (
         `🛡️ *Cobertura:* ${plan.cubre ?? "-"}`,
         `💰 *Cuota${plan.frecuencia ? ` (${plan.frecuencia})` : ""}:* $${formatNumber(plan.cuota ?? 0)}`,
         `🛡️ *Suma asegurada:* $${formatNumber(suma ?? 0)}`,
+        `💼 *Comisión:* ${formatComisionParaCotizacion(aseguradoraId, plan.comision ?? 0)}`,
     ];
+
+    if (
+        aseguradoraId.toLowerCase() === "andina" &&
+        (plan as any).bonificacion != null &&
+        !Number.isNaN(Number((plan as any).bonificacion))
+    ) {
+        lineas.push(`🎁 *Bonificación:* ${formatNumber((plan as any).bonificacion)}%`);
+    }
 
     if ((plan as any).ajuste) lineas.push(`⚙️ *Ajuste:* ${(plan as any).ajuste}`);
     if (fechaCotizacion) lineas.push(`📅 *Fecha:* ${fechaCotizacion}`);
@@ -243,6 +252,12 @@ const buildMensajePlanesTexto = (
                 `🛡️ Cobertura: ${p.cubre ?? "-"}`,
                 `💰 Cuota${p.frecuencia ? ` (${p.frecuencia})` : ""}: $${formatNumber(p.cuota ?? 0)}`,
                 `🧾 Suma asegurada: $${formatNumber((p as any).sumaAsegurada ?? 0)}`,
+                `💼 Comisión: ${formatComisionParaCotizacion(asegId, p.comision ?? 0)}`,
+                asegId.toLowerCase() === "andina" &&
+                (p as any).bonificacion != null &&
+                !Number.isNaN(Number((p as any).bonificacion))
+                    ? `🎁 Bonificación: ${formatNumber((p as any).bonificacion)}%`
+                    : "",
                 p.ajuste ? `⚙️ Ajuste: ${p.ajuste}` : ""
             );
         });
